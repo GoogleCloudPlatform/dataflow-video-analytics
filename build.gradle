@@ -49,8 +49,8 @@ apply plugin: 'com.google.cloud.tools.jib'
 apply plugin: "com.diffplug.gradle.spotless"
 
 
-//mainClassName = System.getProperty("mainClass")
-mainClassName = 'com.google.solutions.df.video.analytics.VideoAnalyticsPipeline' 
+mainClassName = System.getProperty("mainClass")
+//mainClassName = 'com.google.solutions.df.video.analytics.VideoAnalyticsPipeline' 
 jib {
   from {
     image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
@@ -80,16 +80,12 @@ dependencies {
     compile group: 'org.apache.beam', name: 'beam-sdks-java-core', version: dataflowBeamVersion
     compile group: 'org.apache.beam', name: 'beam-runners-google-cloud-dataflow-java', version:dataflowBeamVersion
     compile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
-    compile group: 'org.apache.beam', name: 'beam-sdks-java-io-amazon-web-services', version: dataflowBeamVersion
-    compile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
+    compile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.30'
     compile "com.google.auto.value:auto-value-annotations:1.6.2"
     compile 'com.google.cloud:google-cloud-video-intelligence:1.2.0'
     annotationProcessor "com.google.auto.value:auto-value:1.6.2"
     testCompile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
-    testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
-    testCompile group: 'org.hamcrest', name: 'hamcrest-core', version: '1.3'
-    testCompile group: 'org.hamcrest', name: 'hamcrest-library', version: '1.3'
-    testCompile 'junit:junit:4.12'
+    testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.30'
 	
 
 }

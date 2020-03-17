@@ -15,7 +15,9 @@
  */
 package com.google.solutions.df.video.analytics;
 
+import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform;
 import com.google.solutions.df.video.analytics.common.VideoAnalyticsPipelineOptions;
+import com.google.solutions.df.video.analytics.common.VideoApiTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -36,6 +38,12 @@ public class VideoAnalyticsPipeline {
   public static PipelineResult run(VideoAnalyticsPipelineOptions options) {
 
     Pipeline p = Pipeline.create(options);
+    p.apply(
+            "TransformInputRequest",
+            AnnotationRequestTransform.newBuilder()
+                .setSubscriber(options.getSubscriberId())
+                .build())
+        .apply("ProcessRequest", new VideoApiTransform());
     return p.run();
   }
 }
