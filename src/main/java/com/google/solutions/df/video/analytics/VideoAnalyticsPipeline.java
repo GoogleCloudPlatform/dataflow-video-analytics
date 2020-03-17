@@ -16,6 +16,7 @@
 package com.google.solutions.df.video.analytics;
 
 import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform;
+import com.google.solutions.df.video.analytics.common.ResponseWriteTransform;
 import com.google.solutions.df.video.analytics.common.VideoAnalyticsPipelineOptions;
 import com.google.solutions.df.video.analytics.common.VideoApiTransform;
 import org.apache.beam.sdk.Pipeline;
@@ -43,7 +44,10 @@ public class VideoAnalyticsPipeline {
             AnnotationRequestTransform.newBuilder()
                 .setSubscriber(options.getSubscriberId())
                 .build())
-        .apply("ProcessRequest", new VideoApiTransform());
+        .apply("ProcessAnnotateRequest", new VideoApiTransform())
+        .apply(
+            "WriteResponse",
+            ResponseWriteTransform.newBuilder().setTopic(options.getTopicId()).build());
     return p.run();
   }
 }

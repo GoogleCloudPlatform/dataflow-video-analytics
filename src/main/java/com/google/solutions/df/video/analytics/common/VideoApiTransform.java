@@ -22,6 +22,7 @@ import com.google.cloud.videointelligence.v1.AnnotateVideoRequest;
 import com.google.cloud.videointelligence.v1.AnnotateVideoResponse;
 import com.google.cloud.videointelligence.v1.VideoIntelligenceServiceClient;
 import com.google.gson.JsonSyntaxException;
+import com.google.protobuf.InvalidProtocolBufferException;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -51,9 +52,15 @@ public class VideoApiTransform
       try {
         this.client = VideoIntelligenceServiceClient.create();
       } catch (IOException e) {
-
         this.client.close();
         LOG.error("Can't create VIS API Client");
+      }
+    }
+
+    @FinishBundle
+    public void finishBundle() throws Exception {
+      if (this.client != null) {
+        this.client.close();
       }
     }
 
@@ -62,38 +69,24 @@ public class VideoApiTransform
 
       AnnotateVideoRequest request = c.element();
       AnnotateVideoResponse response = null;
-      // asynchronously perform speech transcription on videos
+      GenericJson json;
+      String feature = request.getFeatures(0).name();
+      // asynchronously perform video annotate request
       OperationFuture<AnnotateVideoResponse, AnnotateVideoProgress> future =
           this.client.annotateVideoAsync(request);
-      LOG.info("Waiting for operation to complete...");
+      LOG.info("Waiting response for a feature {} to complete", feature);
       try {
-        response = future.get(300, TimeUnit.SECONDS);
-      } catch (InterruptedException | ExecutionException | TimeoutException e) {
-        LOG.error("ERROR Processing request {}", e.getMessage());
-      }
-      switch (request.getFeatures(0).name()) {
-        case "OBJECT_TRACKING":
-          GenericJson json;
-          try {
-            json = Util.convertAnnotateVideoResponseToJson(response);
-            LOG.info("JSON {}", Util.gson.toJson(json));
-          } catch (JsonSyntaxException | IOException e) {
-            LOG.error("Processing Response Error {}", e.getMessage());
-          }
+        response = future.get(Util.timeout, TimeUnit.SECONDS);
+        json = Util.convertAnnotateVideoResponseToJson(response);
+        LOG.debug("JSON {}", Util.gson.toJson(json));
+        c.output(Util.gson.toJson(json));
 
-          break;
-        case "FEATURE_UNSPECIFIED":
-          break;
-        case "LABEL_DETECTION":
-          break;
-        case "SHOT_CHANGE_DETECTION":
-          break;
-        case "SPEECH_TRANSCRIPTION":
-          break;
-        case "TEXT_DETECTION":
-          break;
-        default:
-          break;
+      } catch (InterruptedException
+          | ExecutionException
+          | TimeoutException
+          | JsonSyntaxException
+          | InvalidProtocolBufferException e) {
+        LOG.error("ERROR Processing request {}", e.getMessage());
       }
     }
   }

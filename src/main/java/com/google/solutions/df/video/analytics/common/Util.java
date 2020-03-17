@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 public class Util {
   public static final Logger LOG = LoggerFactory.getLogger(Util.class);
   public static Gson gson = new Gson();
+  public static long timeout = 120;
 
   public static GenericJson convertAnnotateVideoResponseToJson(AnnotateVideoResponse response)
       throws JsonSyntaxException, InvalidProtocolBufferException {

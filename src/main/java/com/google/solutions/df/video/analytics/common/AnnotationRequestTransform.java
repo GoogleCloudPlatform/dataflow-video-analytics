@@ -60,6 +60,7 @@ public abstract class AnnotationRequestTransform
           c.output(request.build());
 
         } catch (InvalidProtocolBufferException e) {
+
           LOG.info("Error {}", e.getMessage());
         }
 
