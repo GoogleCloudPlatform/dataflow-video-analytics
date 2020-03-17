@@ -76,7 +76,7 @@ public class VideoApiTransform
           GenericJson json;
           try {
             json = Util.convertAnnotateVideoResponseToJson(response);
-            LOG.info("JSON {}", json.toPrettyString());
+            LOG.info("JSON {}", Util.gson.toJson(json));
           } catch (JsonSyntaxException | IOException e) {
             LOG.error("Processing Response Error {}", e.getMessage());
           }
