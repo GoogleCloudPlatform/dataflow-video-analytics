@@ -2,8 +2,6 @@ package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.videointelligence.v1.AnnotateVideoRequest;
-import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -41,30 +39,16 @@ public abstract class AnnotationRequestTransform
   }
 
   public static class JsonValidatorFn extends DoFn<String, AnnotateVideoRequest> {
-    public Gson gson;
-
-    @Setup
-    public void setup() {
-      gson = new Gson();
-    }
 
     @ProcessElement
     public void processElement(ProcessContext c) {
       String input = c.element();
       try {
-
-        try {
-
-          AnnotateVideoRequest.Builder request = AnnotateVideoRequest.newBuilder();
-          JsonFormat.parser().ignoringUnknownFields().merge(input, request);
-          c.output(request.build());
-
-        } catch (InvalidProtocolBufferException e) {
-
-          LOG.info("Error {}", e.getMessage());
-        }
-
-      } catch (JsonSyntaxException e) {
+        AnnotateVideoRequest.Builder request = AnnotateVideoRequest.newBuilder();
+        JsonFormat.parser().ignoringUnknownFields().merge(input, request);
+        c.output(request.build());
+      } catch (InvalidProtocolBufferException e) {
+        LOG.info("Error {}", e.getMessage());
       }
     }
   }

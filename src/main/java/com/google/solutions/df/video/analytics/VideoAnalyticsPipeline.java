@@ -37,7 +37,6 @@ public class VideoAnalyticsPipeline {
   }
 
   public static PipelineResult run(VideoAnalyticsPipelineOptions options) {
-
     Pipeline p = Pipeline.create(options);
     p.apply(
             "TransformInputRequest",
