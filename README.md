@@ -1,9 +1,9 @@
 # Video Analytics Solution Using Dataflow & Video AI
 This repo contains a reference implementation of a video analytics solution by using Datafow & Video AI.  It's easy to deploy solution and can be used in following use cases:
 
-1.  Analyze video contents stored in GCS for any feature types by  using a pre built ML model as part of Video Intelligent API. 
+1.  Analyze video contents stored in GCS for any feature types by using Video Intelligent API.  
 2. Analyze live streaming video by using Video Intelligence Streaming API 
-3. Analyze by using a custom model in Auto ML
+3. Analyze video contents by using Auto ML and real time prediction using Cloud ML Engine  
  
 ## Reference Architecture
 
