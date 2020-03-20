@@ -1,9 +1,10 @@
 # Video Analytics Solution Using Dataflow & Video AI
-This repo contains a reference implementation of a video analytics solution by using Datafow & Video AI.  It's easy to deploy solution and can be used in following use cases:
+This repo contains a reference implementation of a video analytics solution by using Dataflow & Video AI.  
+Goal is to provide our customers an easy to use solution that can be used in following use cases:
 
-1.  Analyze video contents stored in GCS for any feature types by using Video Intelligent API.  
+1. Analyze video contents stored in GCS for any feature types by using Video Intelligent API.  
 2. Analyze live streaming video by using Video Intelligence Streaming API 
-3. Analyze video contents by using Auto ML and real time prediction using Cloud ML Engine  
+3. Analyze video contents by using Auto ML and real time prediction using Cloud ML Engine.   
  
 ## Reference Architecture
 
@@ -35,7 +36,7 @@ This repo contains a reference implementation of a video analytics solution by u
 ### Dataflow Pipeline 
  ![ref_arch](diagram/df-dag-video.png)
  
-### Output JSON messagee 
+### Output JSON messages
  
 Please checkout the sample directory in the repo.  
 
