@@ -8,6 +8,8 @@ Goal is to provide our customers an easy to use solution that can be used in fol
  
 ## Reference Architecture
 
+* Note: This is work in progress. Will be updated as we work out use case #2 and #3,
+
  ![ref_arch](diagram/ref-arch.png)
  
 
