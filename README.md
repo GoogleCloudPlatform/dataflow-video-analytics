@@ -11,25 +11,31 @@ This repo contains a reference implementation of a video analytics solution by u
  
 
 ## Test 
-#### Publish a JSON message  with various feature config:
+### Publish a JSON message  with various feature config:
  ```
+--> Object Tracking
  gcloud pubsub topics publish ${TOPIC_ID} --message "{\"inputUri\": \"gs://cloud-samples-data/video/cat.mp4\",\"videoContext\":{\"objectTrackingConfig\":  {\"model\":\"builtin/stable\"}},\"features\":[\"OBJECT_TRACKING\"],\"locationId\":\"us-east1\"}"
 
- gcloud pubsub topics publish ${TOPIC_ID} --message "{\"inputUri\": \"gs://cloud-samples-data/video/cat.mp4\",\"videoContext\":{\"labelDetectionConfig\":  {\"model\":\"builtin/stable\"},\"labelDetectionMode\":\"FRAME_MODE\"},\"features\":[\"LABEL_DETECTION\"],\"locationId\":\"us-east1\"}"
+--> Label Detection
+ gcloud pubsub topics publish ${TOPIC_ID} --message "{\"inputUri\": \"gs://cloud-samples-data/video/cat.mp4\",\"videoContext\":{\"labelDetectionConfig\":  {\"model\":\"builtin/stable\"},\"labelDetectionMode\":\"FRAME_MODE\"},\"features\":[\"LABEL_DETECTION\"],\"locationId\":\"us-east1\""
 
+--> Shot Change Detection
  gcloud pubsub topics publish ${TOPIC_ID} --message "{\"inputUri\": \"gs://cloud-samples-data/video/cat.mp4\",\"videoContext\":{\"shotChangeDetectionConfig\":  {\"model\":\"builtin/stable\"}},\"features\":[\"SHOT_CHANGE_DETECTION\"],\"locationId\":\"us-east1\"}"
 
+--> Explicit Content Detection
  gcloud pubsub topics publish ${TOPIC_ID} --message "{\"inputUri\": \"gs://cloud-samples-data/video/cat.mp4\",\"videoContext\":{\"explicitContentDetectionConfig\":  {\"model\":\"builtin/stable\"}},\"features\":[\"EXPLICIT_CONTENT_DETECTION\"],\"locationId\":\"us-east1\"}"
 
+--> Speech Transcription
  gcloud pubsub topics publish ${TOPIC_ID} --message "{\"inputUri\": \"gs://cloud-samples-data/video/cat.mp4\",\"videoContext\":{\"speechTranscriptionConfig\":  {\"model\":\"builtin/stable\"}},\"features\":[\"SPEECH_TRANSCRIPTION\"],\"locationId\":\"us-east1\"}"
 
+--> Text Detection
  gcloud pubsub topics publish ${TOPIC_ID} --message "{\"inputUri\": \"gs://cloud-samples-data/video/cat.mp4\",\"videoContext\":{\"textDetectionConfig\":  {\"model\":\"builtin/stable\"}},\"features\":[\"TEXT_DETECTION\"],\"locationId\":\"us-east1\"}"
  
  ```
-#### Dataflow Pipeline 
+### Dataflow Pipeline 
  ![ref_arch](diagram/df-dag-video.png)
  
-#### Output JSON messagee 
+### Output JSON messagee 
  
 Please checkout the sample directory in the repo.  
 
