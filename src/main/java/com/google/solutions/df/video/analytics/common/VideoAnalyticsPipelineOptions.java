@@ -15,6 +15,8 @@
  */
 package com.google.solutions.df.video.analytics.common;
 
+import com.google.cloud.videointelligence.v1.Feature;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
@@ -28,4 +30,21 @@ public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
   String getTopicId();
 
   void setTopicId(String value);
+
+  @Description("Features")
+  Feature getFeatures();
+
+  void setFeatures(Feature value);
+
+  @Description("Window interval in seconds")
+  @Default.Integer(5)
+  Integer getWindowInterval();
+
+  void setWindowInterval(Integer value);
+
+  @Description("key range")
+  @Default.Integer(1)
+  Integer getKeyRange();
+
+  void setKeyRange(Integer value);
 }

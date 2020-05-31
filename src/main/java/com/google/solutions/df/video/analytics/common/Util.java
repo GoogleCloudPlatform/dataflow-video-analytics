@@ -14,6 +14,12 @@ public class Util {
   public static final Logger LOG = LoggerFactory.getLogger(Util.class);
   public static Gson gson = new Gson();
   public static long timeout = 120;
+  public static final String ALLOWED_NOTIFICATION_EVENT_TYPE = String.valueOf("OBJECT_FINALIZE");
+  /** Allowed image extension supported by Vision API */
+  public static final String FILE_PATTERN = "([^\\s]+(\\.(?i)(/MOV|MPEG4|MP4|AVIs))$)";
+  /** Error message if no valid extension found */
+  public static final String NO_VALID_EXT_FOUND_ERROR_MESSAGE =
+      "File {} does not contain a valid extension";
 
   public static GenericJson convertAnnotateVideoResponseToJson(AnnotateVideoResponse response)
       throws JsonSyntaxException, InvalidProtocolBufferException {

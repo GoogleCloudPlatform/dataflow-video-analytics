@@ -15,79 +15,126 @@
  */
 package com.google.solutions.df.video.analytics.common;
 
-import com.google.api.client.json.GenericJson;
-import com.google.api.gax.longrunning.OperationFuture;
-import com.google.cloud.videointelligence.v1.AnnotateVideoProgress;
-import com.google.cloud.videointelligence.v1.AnnotateVideoRequest;
-import com.google.cloud.videointelligence.v1.AnnotateVideoResponse;
-import com.google.cloud.videointelligence.v1.VideoIntelligenceServiceClient;
-import com.google.gson.JsonSyntaxException;
-import com.google.protobuf.InvalidProtocolBufferException;
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import com.google.auto.value.AutoValue;
+import com.google.cloud.videointelligence.v1.Feature;
+import com.google.cloud.videointelligence.v1.VideoAnnotationResults;
+import com.google.common.base.MoreObjects;
+import java.util.Collections;
+import java.util.List;
+import org.apache.beam.sdk.extensions.ml.VideoIntelligence;
+import org.apache.beam.sdk.state.BagState;
+import org.apache.beam.sdk.state.StateSpec;
+import org.apache.beam.sdk.state.StateSpecs;
+import org.apache.beam.sdk.state.TimeDomain;
+import org.apache.beam.sdk.state.Timer;
+import org.apache.beam.sdk.state.TimerSpec;
+import org.apache.beam.sdk.state.TimerSpecs;
+import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class VideoApiTransform
-    extends PTransform<PCollection<AnnotateVideoRequest>, PCollection<String>> {
+@AutoValue
+public abstract class VideoApiTransform
+    extends PTransform<PCollection<String>, PCollection<String>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoApiTransform.class);
 
-  @Override
-  public PCollection<String> expand(PCollection<AnnotateVideoRequest> input) {
-    return input.apply("VideAPIProcessing", ParDo.of(new VideoApiDoFn()));
+  public abstract Integer keyRange();
+
+  public abstract Integer windowInterval();
+
+  public abstract Feature features();
+
+  @AutoValue.Builder
+  public abstract static class Builder {
+    public abstract Builder setKeyRange(Integer keyRange);
+
+    public abstract Builder setWindowInterval(Integer windowInterval);
+
+    public abstract Builder setFeatures(Feature features);
+
+    public abstract VideoApiTransform build();
   }
 
-  public static class VideoApiDoFn extends DoFn<AnnotateVideoRequest, String> {
+  public static Builder newBuilder() {
+    return new AutoValue_VideoApiTransform.Builder();
+  }
 
-    private VideoIntelligenceServiceClient client = null;
+  @Override
+  public PCollection<String> expand(PCollection<String> input) {
 
-    @StartBundle
-    public void startBundle() {
-      try {
-        this.client = VideoIntelligenceServiceClient.create();
-      } catch (IOException e) {
-        this.client.close();
-        LOG.error("Can't create VIS API Client");
-      }
+    return input
+        .apply("AddRandomKey", WithKeys.of(keyRange()))
+        .apply("ProcessingTimeDelay", ParDo.of(new BatchRequest(windowInterval())))
+        .apply(
+            "AnnotateVideoFiles",
+            ParDo.of(
+                VideoIntelligence.annotateFromURI(Collections.singletonList(features()), null)))
+        .apply(
+            "ProcessResponse",
+            ParDo.of(
+                new DoFn<List<VideoAnnotationResults>, String>() {
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    c.element()
+                        .forEach(
+                            output -> {
+                              c.output(output.toString());
+                            });
+                  }
+                }));
+  }
+
+  public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
+    private Integer windowInterval;
+
+    public BatchRequest(Integer windowInterval) {
+      this.windowInterval = windowInterval;
     }
 
-    @FinishBundle
-    public void finishBundle() throws Exception {
-      if (this.client != null) {
-        this.client.close();
-      }
-    }
+    @StateId("elementsBag")
+    private final StateSpec<BagState<KV<Integer, String>>> elementsBag = StateSpecs.bag();
+
+    @TimerId("eventTimer")
+    private final TimerSpec timer = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
+
+    @StateId("isTimerSet")
+    private final StateSpec<ValueState<Boolean>> isTimerSet = StateSpecs.value();
 
     @ProcessElement
-    public void processElement(ProcessContext c) {
-
-      AnnotateVideoRequest request = c.element();
-      AnnotateVideoResponse response = null;
-      GenericJson json;
-      String feature = request.getFeatures(0).name();
-      // asynchronously perform video annotate request
-      OperationFuture<AnnotateVideoResponse, AnnotateVideoProgress> future =
-          this.client.annotateVideoAsync(request);
-      LOG.info("Waiting response for a feature {} to complete", feature);
-      try {
-        response = future.get(Util.timeout, TimeUnit.SECONDS);
-        json = Util.convertAnnotateVideoResponseToJson(response);
-        LOG.debug("JSON {}", Util.gson.toJson(json));
-        c.output(Util.gson.toJson(json));
-
-      } catch (InterruptedException
-          | ExecutionException
-          | TimeoutException
-          | JsonSyntaxException
-          | InvalidProtocolBufferException e) {
-        LOG.error("ERROR Processing request {}", e.getMessage());
+    public void process(
+        @Element KV<Integer, String> element,
+        @StateId("elementsBag") BagState<String> elementsBag,
+        @StateId("isTimerSet") ValueState<Boolean> isTimerSetState,
+        @TimerId("eventTimer") Timer eventTimer) {
+      elementsBag.add(element.getValue());
+      if (!MoreObjects.firstNonNull(isTimerSetState.read(), false)) {
+        eventTimer.offset(Duration.standardSeconds(windowInterval)).setRelative();
+        isTimerSetState.write(true);
       }
+    }
+
+    @OnTimer("eventTimer")
+    public void onTimer(
+        @StateId("elementsBag") BagState<String> elementsBag,
+        OutputReceiver<String> output,
+        @StateId("isTimerSet") ValueState<Boolean> isTimerSetState) {
+
+      elementsBag
+          .read()
+          .forEach(
+              file -> {
+                output.output(file);
+              });
+
+      elementsBag.clear();
+      isTimerSetState.clear();
     }
   }
 }

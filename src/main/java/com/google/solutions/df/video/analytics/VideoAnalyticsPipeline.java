@@ -16,12 +16,12 @@
 package com.google.solutions.df.video.analytics;
 
 import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform;
-import com.google.solutions.df.video.analytics.common.ResponseWriteTransform;
 import com.google.solutions.df.video.analytics.common.VideoAnalyticsPipelineOptions;
 import com.google.solutions.df.video.analytics.common.VideoApiTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,15 +38,20 @@ public class VideoAnalyticsPipeline {
 
   public static PipelineResult run(VideoAnalyticsPipelineOptions options) {
     Pipeline p = Pipeline.create(options);
-    p.apply(
+    PCollection<String> videoFilesWithContext =
+        p.apply(
             "TransformInputRequest",
             AnnotationRequestTransform.newBuilder()
                 .setSubscriber(options.getSubscriberId())
-                .build())
-        .apply("ProcessAnnotateRequest", new VideoApiTransform())
-        .apply(
-            "WriteResponse",
-            ResponseWriteTransform.newBuilder().setTopic(options.getTopicId()).build());
+                .build());
+    videoFilesWithContext.apply(
+        "AnnotateVideoRequests",
+        VideoApiTransform.newBuilder()
+            .setFeatures(options.getFeatures())
+            .setKeyRange(options.getKeyRange())
+            .setWindowInterval(options.getWindowInterval())
+            .build());
+
     return p.run();
   }
 }

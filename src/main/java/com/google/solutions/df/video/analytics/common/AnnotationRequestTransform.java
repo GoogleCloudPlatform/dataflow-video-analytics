@@ -1,10 +1,9 @@
 package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.videointelligence.v1.AnnotateVideoRequest;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.util.JsonFormat;
+import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -14,8 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class AnnotationRequestTransform
-    extends PTransform<PBegin, PCollection<AnnotateVideoRequest>> {
+public abstract class AnnotationRequestTransform extends PTransform<PBegin, PCollection<String>> {
   public static final Logger LOG = LoggerFactory.getLogger(AnnotationRequestTransform.class);
 
   public abstract String subscriber();
@@ -32,23 +30,32 @@ public abstract class AnnotationRequestTransform
   }
 
   @Override
-  public PCollection<AnnotateVideoRequest> expand(PBegin input) {
+  public PCollection<String> expand(PBegin input) {
     return input
-        .apply("ReadFromPubSub", PubsubIO.readStrings().fromSubscription(subscriber()))
-        .apply("ConvertJsontoProto", ParDo.of(new JsonValidatorFn()));
+        .apply(
+            "ReadFileMetadata",
+            PubsubIO.readMessagesWithAttributes().fromSubscription(subscriber()))
+        .apply("ConvertToGCSUri", ParDo.of(new MapPubSubMessage()));
   }
 
-  public static class JsonValidatorFn extends DoFn<String, AnnotateVideoRequest> {
+  public class MapPubSubMessage extends DoFn<PubsubMessage, String> {
 
     @ProcessElement
     public void processElement(ProcessContext c) {
-      String input = c.element();
-      try {
-        AnnotateVideoRequest.Builder request = AnnotateVideoRequest.newBuilder();
-        JsonFormat.parser().ignoringUnknownFields().merge(input, request);
-        c.output(request.build());
-      } catch (InvalidProtocolBufferException e) {
-        LOG.info("Error {}", e.getMessage());
+      String bucket = c.element().getAttribute("bucketId");
+      String object = c.element().getAttribute("objectId");
+      String eventType = c.element().getAttribute("eventType");
+      GcsPath uri = GcsPath.fromComponents(bucket, object);
+
+      if (eventType.equalsIgnoreCase(Util.ALLOWED_NOTIFICATION_EVENT_TYPE)) {
+        String fileName = uri.toString();
+        if (fileName.matches(Util.FILE_PATTERN)) {
+          c.output(uri.toString());
+        } else {
+          LOG.warn(Util.NO_VALID_EXT_FOUND_ERROR_MESSAGE, fileName);
+        }
+      } else {
+        LOG.warn("Event Type Not Supported {}", eventType);
       }
     }
   }
