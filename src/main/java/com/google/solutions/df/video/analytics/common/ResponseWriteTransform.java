@@ -19,13 +19,15 @@ import com.google.auto.value.AutoValue;
 import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform.Builder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class ResponseWriteTransform extends PTransform<PCollection<String>, PDone> {
+public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>, PDone> {
 
   public static final Logger LOG = LoggerFactory.getLogger(ResponseWriteTransform.class);
 
@@ -43,7 +45,12 @@ public abstract class ResponseWriteTransform extends PTransform<PCollection<Stri
   }
 
   @Override
-  public PDone expand(PCollection<String> input) {
-    return input.apply("WriteToTopic", PubsubIO.writeStrings().to(topic()));
+  public PDone expand(PCollection<Row> input) {
+
+    return input
+        .apply("ConvertToJson", ToJson.of())
+        .apply("WriteToTopic", PubsubIO.writeStrings().to(topic()));
+
+    
   }
 }

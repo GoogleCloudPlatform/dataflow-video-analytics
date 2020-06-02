@@ -17,10 +17,9 @@ package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.videointelligence.v1.Feature;
-import com.google.cloud.videointelligence.v1.VideoAnnotationResults;
 import com.google.common.base.MoreObjects;
 import java.util.Collections;
-import java.util.List;
+import java.util.Random;
 import org.apache.beam.sdk.extensions.ml.VideoIntelligence;
 import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.StateSpec;
@@ -36,13 +35,13 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class VideoApiTransform
-    extends PTransform<PCollection<String>, PCollection<String>> {
+public abstract class VideoApiTransform extends PTransform<PCollection<String>, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoApiTransform.class);
 
   public abstract Integer keyRange();
@@ -67,28 +66,16 @@ public abstract class VideoApiTransform
   }
 
   @Override
-  public PCollection<String> expand(PCollection<String> input) {
+  public PCollection<Row> expand(PCollection<String> input) {
 
     return input
-        .apply("AddRandomKey", WithKeys.of(keyRange()))
+        .apply("AddRandomKey", WithKeys.of(new Random().nextInt(keyRange())))
         .apply("ProcessingTimeDelay", ParDo.of(new BatchRequest(windowInterval())))
         .apply(
             "AnnotateVideoFiles",
             ParDo.of(
                 VideoIntelligence.annotateFromURI(Collections.singletonList(features()), null)))
-        .apply(
-            "ProcessResponse",
-            ParDo.of(
-                new DoFn<List<VideoAnnotationResults>, String>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext c) {
-                    c.element()
-                        .forEach(
-                            output -> {
-                              c.output(output.toString());
-                            });
-                  }
-                }));
+        .apply("ProcessResponse", ParDo.of(new ObjectTrackerOutputDoFn()));
   }
 
   public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
@@ -99,7 +86,7 @@ public abstract class VideoApiTransform
     }
 
     @StateId("elementsBag")
-    private final StateSpec<BagState<KV<Integer, String>>> elementsBag = StateSpecs.bag();
+    private final StateSpec<BagState<String>> elementsBag = StateSpecs.bag();
 
     @TimerId("eventTimer")
     private final TimerSpec timer = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
@@ -131,6 +118,7 @@ public abstract class VideoApiTransform
           .forEach(
               file -> {
                 output.output(file);
+                LOG.info("Timer Triggered for file {}", file);
               });
 
       elementsBag.clear();
