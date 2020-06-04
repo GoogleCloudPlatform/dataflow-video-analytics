@@ -16,12 +16,14 @@
 package com.google.solutions.df.video.analytics;
 
 import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform;
+import com.google.solutions.df.video.analytics.common.BQWriteTransform;
 import com.google.solutions.df.video.analytics.common.ResponseWriteTransform;
 import com.google.solutions.df.video.analytics.common.Util;
 import com.google.solutions.df.video.analytics.common.VideoAnalyticsPipelineOptions;
 import com.google.solutions.df.video.analytics.common.VideoApiTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -36,6 +38,7 @@ public class VideoAnalyticsPipeline {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(VideoAnalyticsPipelineOptions.class);
+
     run(options);
   }
 
@@ -48,18 +51,29 @@ public class VideoAnalyticsPipeline {
                 .setSubscriber(options.getSubscriberId())
                 .build());
     PCollection<Row> annotationResult =
-        videoFilesWithContext.apply(
-            "AnnotateVideoRequests",
-            VideoApiTransform.newBuilder()
-                .setFeatures(options.getFeatures())
-                .setKeyRange(options.getKeyRange())
-                .setWindowInterval(options.getWindowInterval())
-                .build()).setRowSchema(Util.videoMlCustomOutputSchema);
-    
+        videoFilesWithContext
+            .apply(
+                "AnnotateVideoRequests",
+                VideoApiTransform.newBuilder()
+                    .setFeatures(options.getFeatures())
+                    .setKeyRange(options.getKeyRange())
+                    .setWindowInterval(options.getWindowInterval())
+                    .build())
+            .setRowSchema(Util.videoMlCustomOutputSchema);
+
     annotationResult.apply(
         "WriteResponse",
-        ResponseWriteTransform.newBuilder().setTopic(options.getTopicId()).build());
-
+        ResponseWriteTransform.newBuilder()
+            .setTopic(options.getTopicId())
+            .setEntityList(options.getEntity())
+            .setConfidence(options.getConfidence())
+            .build());
+    annotationResult.apply(
+        "StreamFullResponsetoBQ",
+        BQWriteTransform.newBuilder()
+            .setTableSpec(options.getTableSpec())
+            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+            .build());
     return p.run();
   }
 }

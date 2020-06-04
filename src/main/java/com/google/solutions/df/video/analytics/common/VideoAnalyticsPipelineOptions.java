@@ -16,6 +16,7 @@
 package com.google.solutions.df.video.analytics.common;
 
 import com.google.cloud.videointelligence.v1.Feature;
+import java.util.List;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -47,4 +48,20 @@ public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
   Integer getKeyRange();
 
   void setKeyRange(Integer value);
+
+  @Description("Object/Entity List to filter the response")
+  List<String> getEntity();
+
+  void setEntity(List<String> value);
+
+  @Description("confidence")
+  @Default.Double(0.1)
+  Double getConfidence();
+
+  void setConfidence(Double value);
+
+  @Description("BQ Table Spec")
+  String getTableSpec();
+
+  void setTableSpec(String value);
 }

@@ -17,7 +17,10 @@ package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
 import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform.Builder;
+import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.schemas.transforms.Filter;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
@@ -33,9 +36,19 @@ public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>
 
   public abstract String topic();
 
+  @Nullable
+  public abstract List<String> entityList();
+
+  @Nullable
+  public abstract Double confidence();
+
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setTopic(String topic);
+
+    public abstract Builder setEntityList(List<String> entityLst);
+
+    public abstract Builder setConfidence(Double confidence);
 
     public abstract ResponseWriteTransform build();
   }
@@ -48,9 +61,14 @@ public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>
   public PDone expand(PCollection<Row> input) {
 
     return input
+        .apply(
+            "FilterEntity",
+            Filter.<Row>create()
+                .whereFieldName(
+                    "file_data.entity",
+                    ent -> entityList().stream().anyMatch(obj -> obj.equals(ent)))
+                .whereFieldName("file_data.confidence", (Double con) -> con > confidence()))
         .apply("ConvertToJson", ToJson.of())
         .apply("WriteToTopic", PubsubIO.writeStrings().to(topic()));
-
-    
   }
 }

@@ -1,0 +1,4 @@
+{
+  "mainClass": "com.google.solutions.df.video.analytics.VideoAnalyticsPipeline",
+  "classPath": "/template/df-video-analytics-template/libs/*:/template/df-video-analytics-template/classes"
+}

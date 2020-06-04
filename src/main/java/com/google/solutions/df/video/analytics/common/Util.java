@@ -7,6 +7,7 @@ import com.google.cloud.videointelligence.v1.AnnotateVideoResponse;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.google.protobuf.Duration;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.util.stream.Stream;
@@ -29,6 +30,7 @@ public class Util {
   public static final Schema videoMlDetectionSchema =
       Stream.of(
               Schema.Field.of("frame", FieldType.INT32).withNullable(true),
+              Schema.Field.of("timeOffset", FieldType.STRING).withNullable(true),
               Schema.Field.of("x", FieldType.FLOAT).withNullable(true),
               Schema.Field.of("y", FieldType.FLOAT).withNullable(true),
               Schema.Field.of("w", FieldType.FLOAT).withNullable(true),
@@ -37,13 +39,14 @@ public class Util {
   public static final Schema videoMlCustomFileDataSchema =
       Stream.of(
               Schema.Field.of("entity", FieldType.STRING).withNullable(true),
-              Schema.Field.of("confidence", FieldType.DOUBLE).withNullable(true))
+              Schema.Field.of("confidence", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("startTimeOffset", FieldType.STRING).withNullable(true),
+              Schema.Field.of("endTimeOffset", FieldType.STRING).withNullable(true))
           .collect(toSchema());
 
   public static final Schema videoMlCustomFrameDataSchema =
       Stream.of(
-              Schema.Field.of(
-                      "detections", FieldType.array(FieldType.row(videoMlDetectionSchema)))
+              Schema.Field.of("detections", FieldType.array(FieldType.row(videoMlDetectionSchema)))
                   .withNullable(true))
           .collect(toSchema());
   public static final Schema videoMlCustomOutputSchema =
@@ -51,8 +54,7 @@ public class Util {
               Schema.Field.of("gcsUri", FieldType.STRING).withNullable(true),
               Schema.Field.of("file_data", FieldType.row(videoMlCustomFileDataSchema))
                   .withNullable(true),
-              Schema.Field.of(
-                      "frame_data", FieldType.row(videoMlCustomFrameDataSchema))
+              Schema.Field.of("frame_data", FieldType.row(videoMlCustomFrameDataSchema))
                   .withNullable(true))
           .collect(toSchema());
 
@@ -60,5 +62,9 @@ public class Util {
       throws JsonSyntaxException, InvalidProtocolBufferException {
     return gson.fromJson(
         JsonFormat.printer().print(response), new TypeToken<GenericJson>() {}.getType());
+  }
+
+  public static String convertToSec(Duration offset) {
+    return String.valueOf(offset.getSeconds() + offset.getNanos() / 1e9);
   }
 }

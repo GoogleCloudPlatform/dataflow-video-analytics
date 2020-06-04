@@ -1,0 +1,68 @@
+[
+  {
+    "mode": "REQUIRED",
+    "name": "gcsUri",
+    "type": "STRING"
+  },
+  {
+    "fields": [
+      {
+        "name": "entity",
+        "type": "STRING"
+      },
+      {
+        "name": "confidence",
+        "type": "FLOAT"
+      },
+      {
+        "name": "startTimeOffset",
+        "type": "STRING"
+      },
+      {
+        "name": "endTimeOffset",
+        "type": "STRING"
+      }
+    ],
+    "mode": "NULLABLE",
+    "name": "file_data",
+    "type": "RECORD"
+  },
+  {
+    "fields": [
+      {
+        "fields": [
+          {
+            "name": "frame",
+            "type": "STRING"
+          },
+          {
+            "name": "x",
+            "type": "STRING"
+          },
+          {
+            "name": "y",
+            "type": "STRING"
+          },
+          {
+            "name": "w",
+            "type": "STRING"
+          },
+          {
+            "name": "h",
+            "type": "STRING"
+          },
+          {
+            "name": "timeOffset",
+            "type": "STRING"
+          }
+        ],
+        "mode": "REPEATED",
+        "name": "detections",
+        "type": "RECORD"
+      }
+    ],
+    "mode": "NULLABLE",
+    "name": "frame_data",
+    "type": "RECORD"
+  }
+]

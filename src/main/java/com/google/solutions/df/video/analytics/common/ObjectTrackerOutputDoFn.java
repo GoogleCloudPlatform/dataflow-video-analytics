@@ -41,23 +41,36 @@ public class ObjectTrackerOutputDoFn extends DoFn<List<VideoAnnotationResults>, 
               .forEach(
                   annotation -> {
                     double confidence = annotation.getConfidence();
-                    String entityDescription = "NOT_FOUND";
+                    String entityDescription =
+                        annotation.hasEntity()
+                            ? annotation.getEntity().getDescription()
+                            : "NOT_FOUND";
+
+                    String startTimeOffset =
+                        annotation.hasSegment()
+                            ? Util.convertToSec(annotation.getSegment().getStartTimeOffset())
+                            : "NOT_FOUND";
+
+                    String endTimeOffset =
+                        annotation.hasSegment()
+                            ? Util.convertToSec(annotation.getSegment().getEndTimeOffset())
+                            : "NOT_FOUND";
+
                     List<Row> frameDataList = new ArrayList<Row>();
                     AtomicInteger frameCounter = new AtomicInteger(0);
-                    if (annotation.hasEntity()) {
-                      entityDescription = annotation.getEntity().getDescription();
-                    }
-                    
                     annotation
                         .getFramesList()
                         .forEach(
                             frame -> {
                               NormalizedBoundingBox normalizedBoundingBox =
                                   frame.getNormalizedBoundingBox();
+                              String timeOffset = Util.convertToSec(frame.getTimeOffset());
+
                               frameDataList.add(
                                   Row.withSchema(Util.videoMlDetectionSchema)
                                       .addValues(
                                           frameCounter.incrementAndGet(),
+                                          timeOffset,
                                           normalizedBoundingBox.getLeft(),
                                           normalizedBoundingBox.getTop(),
                                           normalizedBoundingBox.getRight(),
@@ -69,11 +82,17 @@ public class ObjectTrackerOutputDoFn extends DoFn<List<VideoAnnotationResults>, 
                             .addValues(
                                 gcsUri,
                                 Row.withSchema(Util.videoMlCustomFileDataSchema)
-                                    .addValues(entityDescription, confidence).build(),
+                                    .addValues(
+                                        entityDescription,
+                                        confidence,
+                                        startTimeOffset,
+                                        endTimeOffset)
+                                    .build(),
                                 Row.withSchema(Util.videoMlCustomFrameDataSchema)
-                                .addArray(frameDataList).build())
+                                    .addArray(frameDataList)
+                                    .build())
                             .build();
-                    LOG.debug("row {}", outputRow);
+                    LOG.debug("Row {}", outputRow);
                     c.output(outputRow);
                   });
         });
