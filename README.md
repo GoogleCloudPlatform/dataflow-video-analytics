@@ -5,11 +5,11 @@ This repo contains a series of reference implementations for video analytics sol
 2. Streaming Live Video Analytics (coming soon!).  
 
 ## Table of Contents  
-* [Object Detection in Video Clips](#object_detection_in_video_clips).  
-	* [Reference Architecture](#reference_architecture_using_video_intelligence_api).      
-	* [Build & Run Using Dataflow Flex Template](#build_run).  
+* [Object Detection in Video Clips](#object-detection-in-video-clips).  
+	* [Reference Architecture](#reference-architecture-using-video-intelligence-api).      
+	* [Build & Run Using Dataflow Flex Template](#build-run).  
 	* [Test Using a Drone  Video Clip Dataset from Kaggle ](#test). 
-	* [Custom Json Output and Filtering](#custom_json_output_and_ filtering ). 
+	* [Custom Json Output and Filtering ](#custom-json-output-and- filtering ). 
  
 
 ## Object Detection in Video Clips 
@@ -142,8 +142,11 @@ ORDER by max_confidence DESC
 
 *  In our pipeline configuration, we used "entity=window, person" and "confidence=0.9" as pipeline arguments to filter out the response.  You can use this parameters to filter out any object in the clips that may be requried to for near real time actions like notification. You can use the command below to pull message from thee output subscription. 
 
-```gcloud pubsub subscriptions pull ${OUTPUT_SUBSCRIPTION_ID} --auto-ack --limit 1 --project $PROJECT_ID 
+
 ```
+gcloud pubsub subscriptions pull ${OUTPUT_SUBSCRIPTION_ID} --auto-ack --limit 1 --project $PROJECT_ID 
+```
+
 
 * You should see following json output.  
 
