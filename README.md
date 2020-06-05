@@ -1,8 +1,5 @@
 # Video Analytics Solution Using Dataflow & Video AI
-This repo contains a series of reference implementations for video analytics solution by using Dataflow & Video AI.  Goal for this  code repo is to provide an easy to use end to end solution to process large scale unstructured video data by bringing multiple data streams together  to drive insight using Video AI. 
-
-1. Near realtime object detection  in video clips  by using Video Intelligence API.    
-2. Streaming Live Video Analytics (coming soon!).  
+This repo contains a reference implementations for a series of  video analytics solutions by using Dataflow & Video AI.  The goal is to provide an easy to use end to end solution to process large scale unstructured video data by bringing multiple data streams together to drive insight using Video AI. 
 
 ## Table of Contents  
 * [Object Detection in Video Clips](#object-detection-in-video-clips).  
@@ -13,7 +10,9 @@ This repo contains a series of reference implementations for video analytics sol
  
 
 ## Object Detection in Video Clips 
-Customers in the alarm monitoring, television, insurance and other industries are producing large volumes of unstructured  data and are looking for solutions for augmenting unstructured data streams with other streams of events (for example, motion sensor events) and building analytical solutions to drive their operations and reporting. For example, alarm monitoring companies want to augment motion sensor data with the analysis of video clips (and, eventually, live video feeds) to determine if a dispatch of a security team to a customer’s premises is justified and therefore reduce the false positive rate that drives the costs of their operations up.
+Many customers across various industries  are producing large volumes of unstructured  data and are looking for easy to use streaming solutions to  analyze in near real time. For example, alarm monitoring companies want to augment motion sensor data with the analysis of video clips (and, eventually, live video feeds) to determine if a dispatch of a security team to a customer’s premises is justified and therefore reduce the false positive rate that drives the costs of their operations up. This section of this repo highlights how you can use this pipeline to detect objects in large scale video clips and customize the Json response for downstream systems to consume.  
+
+For testing purpose, we use this [dataset](https://www.kaggle.com/kmader/drone-videos) from Kaggle collected from drone video clips.
 
 ### Reference Architecture Using Video Intelligence API
  ![ref_arch](diagram/video_blog_diagram.png)
@@ -124,7 +123,7 @@ gsutil -m cp gs://df-video-analytics-drone-dataset/* gs://${DRONE_VIDEO_CLIPS_BU
  ![t4](diagram/transform_4.png)
 
 ### Custom Json Output and Filtering 
-Pipeline uses a nested table in BigQuery to store the API response and also publishes a customized json message to a PubSub topic so that downstream applications can consume it in near real time. This reference implementation shows how you can customize the standard Json response received from Video intelligence API by using Row and some built in Beam transform like ToJson and Filter by field name. 
+Pipeline uses a nested table in BigQuery to store the API response and also publishes a customized json message to a PubSub topic so that downstream applications can consume it in near real time. This reference implementation shows how you can customize the standard Json response received from Video intelligence API by using [Row/Schema](master/src/main/java/com/google/solutions/df/video/analytics/common/Util.java#30) and built in Beam transform like [ToJson and Filter](master/src/main/java/com/google/solutions/df/video/analytics/common/ResponseWriteTransform.java#66) by column name. 
 
 #### BigQuery Schema 
 
@@ -139,6 +138,7 @@ WHERE gcsUri like '%<source_bucket_name>%'
 GROUP by  gcsUri, file_data.entity
 ORDER by max_confidence DESC
 ```
+ ![t4](diagram/top_entity_by_file.png). 
 
 *  In our pipeline configuration, we used "entity=window, person" and "confidence=0.9" as pipeline arguments to filter out the response.  You can use this parameters to filter out any object in the clips that may be required to for near real time actions like notification. You can use the command below to pull message from thee output subscription. 
 
@@ -148,7 +148,7 @@ gcloud pubsub subscriptions pull ${OUTPUT_SUBSCRIPTION_ID} --auto-ack --limit 1 
 ```
 
 
-* You should see following json output.  
+* You should see json output like below:
 
 ```{
    "gcsUri":"/drone-video-dataset/gbikes_dinosaur.mp4",
