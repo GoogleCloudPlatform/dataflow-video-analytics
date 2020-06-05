@@ -149,7 +149,7 @@ ORDER by max_confidence DESC
 ```
  ![t4](diagram/top_entity_by_file.png). 
 
-*  In our pipeline configuration, we used "entity=window, person" and "confidence=0.9" as pipeline arguments to filter out the response.  You can use this parameters to filter out any object in the clips that may be required to for near real time actions like notification. You can use the command below to pull message from thee output subscription. 
+*  In the test pipeline, you can see from this argument  "entity=window, person" and "confidence=0.9" , pipeline is filtering the response that may be required  for near real time processing for downstream applications.  You can use the command below to see the publish message from the output subscription. 
 
 
 ```
