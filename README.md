@@ -17,6 +17,15 @@ For testing purpose, we use this [dataset](https://www.kaggle.com/kmader/drone-v
 ### Reference Architecture Using Video Intelligence API
  ![ref_arch](diagram/video_blog_diagram.png)
 
+### How the pipeline works?
+1. Solution assumes video clips are uploaded and stored in a GCS bucket  and a metadata notification is sent out to a PubSub topic.
+
+2. Dataflow process the video files in micro batch  and based on the list of features passed as pipeline argument.  
+
+3. Dataflow used the list of entities and confidence score to filter the Video Intelligence API response and output to following sinks:
+	 *  In a nested table in BigQuery for further analysis. 
+	 * In a PubSub topic by customizing the Json response so that downstream applications can consume in near real time. 
+
 ### Build & Run
 1. Create  two buckets , one to store input dataset and another one to store fle template config file
 
@@ -123,7 +132,7 @@ gsutil -m cp gs://df-video-analytics-drone-dataset/* gs://${DRONE_VIDEO_CLIPS_BU
  ![t4](diagram/transform_4.png)
 
 ### Custom Json Output and Filtering 
-Pipeline uses a nested table in BigQuery to store the API response and also publishes a customized json message to a PubSub topic so that downstream applications can consume it in near real time. This reference implementation shows how you can customize the standard Json response received from Video intelligence API by using [Row/Schema](master/src/main/java/com/google/solutions/df/video/analytics/common/Util.java#30) and built in Beam transform like [ToJson and Filter](master/src/main/java/com/google/solutions/df/video/analytics/common/ResponseWriteTransform.java#66) by column name. 
+Pipeline uses a nested table in BigQuery to store the API response and also publishes a customized json message to a PubSub topic so that downstream applications can consume it in near real time. This reference implementation shows how you can customize the standard Json response received from Video intelligence API by using [Row/Schema](/src/master/main/java/com/google/solutions/df/video/analytics/common/Util.java#30) and built in Beam transform like [ToJson and Filter](src/master/main/java/com/google/solutions/df/video/analytics/common/ResponseWriteTransform.java#66) by column name. 
 
 #### BigQuery Schema 
 
