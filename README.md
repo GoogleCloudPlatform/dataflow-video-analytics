@@ -1,7 +1,7 @@
 # Video Analytics Solution Using Dataflow & Video AI
-This repo contains a series of reference implementations for video analytics solution by using Dataflow & Video AI.  Goal for this  code repo is to provide an easy to use end to end solution to process large scale unstructured video data by bringing mutiple data streams together  to drive insight using Video AI. 
+This repo contains a series of reference implementations for video analytics solution by using Dataflow & Video AI.  Goal for this  code repo is to provide an easy to use end to end solution to process large scale unstructured video data by bringing multiple data streams together  to drive insight using Video AI. 
 
-1. Near realtime object detection  in video clips  by using Video Intellgence API.    
+1. Near realtime object detection  in video clips  by using Video Intelligence API.    
 2. Streaming Live Video Analytics (coming soon!).  
 
 ## Table of Contents  
@@ -9,7 +9,7 @@ This repo contains a series of reference implementations for video analytics sol
 	* [Reference Architecture](#reference-architecture-using-video-intelligence-api).      
 	* [Build & Run Using Dataflow Flex Template](#build-run).  
 	* [Test Using a Drone  Video Clip Dataset from Kaggle ](#test). 
-	* [Custom Json Output and Filtering ](#custom-json-output-and- filtering ). 
+	* [Custom Json Output and Filtering ](#custom-json-output-and-filtering ). 
  
 
 ## Object Detection in Video Clips 
@@ -27,7 +27,7 @@ gsutil mb -c standard -l <var>region</var> gs://${DRONE_VIDEO_CLIPS_BUCKET}
 gsutil mb -c standard -l <var>region</var> gs://${DF_TEMPLATE_BUCKET}
 ```
 
-2. Create requried topics and subcriptions as below
+2. Create required topics and subscriptions as below
 
 ```export INPUT_TOPIC_ID=<var>topic-id</var>
 export INPUT_SUBSCRIPTION_ID=<var>subscription-id</var>
@@ -140,7 +140,7 @@ GROUP by  gcsUri, file_data.entity
 ORDER by max_confidence DESC
 ```
 
-*  In our pipeline configuration, we used "entity=window, person" and "confidence=0.9" as pipeline arguments to filter out the response.  You can use this parameters to filter out any object in the clips that may be requried to for near real time actions like notification. You can use the command below to pull message from thee output subscription. 
+*  In our pipeline configuration, we used "entity=window, person" and "confidence=0.9" as pipeline arguments to filter out the response.  You can use this parameters to filter out any object in the clips that may be required to for near real time actions like notification. You can use the command below to pull message from thee output subscription. 
 
 
 ```
