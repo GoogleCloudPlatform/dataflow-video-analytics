@@ -20,9 +20,9 @@ For testing purpose, we use this [dataset](https://www.kaggle.com/kmader/drone-v
 ### How the pipeline works?
 1. Solution assumes video clips are uploaded and stored in a GCS bucket  and a metadata notification is sent out to a PubSub topic.
 
-2. Dataflow process the video files in micro batch  and based on the list of features passed as pipeline argument.  
+2. Dataflow pipeline process the video files in micro batch  and based on the list of features passed as pipeline argument.  
 
-3. Dataflow used the list of entities and confidence score to filter the Video Intelligence API response and output to following sinks:
+3. Dataflow pipeline uses the list of entities and confidence score to filter the Video Intelligence API response and output to following sinks:
 	 *  In a nested table in BigQuery for further analysis. 
 	 * In a PubSub topic by customizing the Json response so that downstream applications can consume in near real time. 
 
