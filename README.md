@@ -9,6 +9,7 @@ This repo contains a series of reference implementations for video analytics sol
 	* [Reference Architecture](#reference_architecture_using_video_intelligence_api).      
 	* [Build & Run Using Dataflow Flex Template](#build_run).  
 	* [Test Using a Drone  Video Clip Dataset from Kaggle ](#test). 
+	* [Custom Json Output and Filtering](#custom_json_output_and_ filtering ). 
  
 
 ## Object Detection in Video Clips 
@@ -68,8 +69,8 @@ gradle run -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPip
 --numWorkers=3 --maxNumWorkers=5 --region=us-central1 \
 --subscriberId=projects/${PROJECT_ID}/subscriptions/${INPUT_SUBSCRIPTION_ID} \
 --features=OBJECT_TRACKING --entity=window,person --windowInterval=1 \
---keyRange=8 --tableSpec=${PROJECT_ID}:${DATASET_NAME}.object_tracking_analysis" \
---confidence=0.9 --topicId=projects/${PROJECT_ID}/topic/${OUTPUT_TOPIC_ID} 
+--keyRange=8 --tableSpec=${PROJECT_ID}:${DATASET_NAME}.object_tracking_analysis \
+--confidence=0.9 --topicId=projects/${PROJECT_ID}/topic/${OUTPUT_TOPIC_ID}" 
 ```
 
 6. Create a docker image for flex template. 
@@ -87,7 +88,7 @@ gsutil cp src/main/resources/dynamic_template_video_analytics.json gs://${DF_TEM
 ```
 
 
-8. Trigger using gcloud flex template
+8. Trigger using Dataflow flex template
 
 ```gcloud beta dataflow flex-template run "video-object-tracking" \
 --project=${PROJECT_ID} --region=us-central1 \ --template-file-gcs-location=gs://${DF_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json \
@@ -100,18 +101,121 @@ gsutil cp src/main/resources/dynamic_template_video_analytics.json gs://${DF_TEM
 ~topicId=projects/${PROJECT_ID}/topics/${OUTPUT_TOPIC_ID} 
 ```
 
-
-#### Dataflow Pipeline
+### Test
+1.  Validate the pipeline is running from the Dataflow console
  ![ref_arch](diagram/video_dag.png)
  
-### Test
-1. Enable GCS metadata notification for the PubSub and copy dataset to your bucket. 
+2. Copy test files to the bucket 
+1. Enable GCS metadata notification for the PubSub and copy sample data to your bucket. 
 
 ```
 gsutil notification create -t ${INPUT_TOPIC_ID} -f json gs://${DRONE_VIDEO_CLIPS_BUCKET}
+gsutil -m cp gs://df-video-analytics-drone-dataset/* gs://${DRONE_VIDEO_CLIPS_BUCKET}
 ```
 
+3. Please validate if pipeline has successfully processed the data by looking the elements count in the write transform. 
 
+ ![t1](diagram/transform_1.png)
+ 
+ ![t2](diagram/transform_2.png)
+ 
+ ![t3](diagram/transform_3.png)
+ 
+ ![t4](diagram/transform_4.png)
 
+### Custom Json Output and Filtering 
+Pipeline uses a nested table in BigQuery to store the API response and also publishes a customized json message to a PubSub topic so that downstream applications can consume it in near real time. This reference implementation shows how you can customize the standard Json response received from Video intelligence API by using Row and some built in Beam transform like ToJson and Filter by field name. 
+
+#### BigQuery Schema 
+
+ ![t4](diagram/table_schema.png). 
+
+* You can use the following query to investigate different objects and confidence level found from our kaggle dataset collected from drone clips
+
+```
+SELECT  gcsUri, file_data.entity, max(file_data.confidence) as max_confidence 
+FROM `<project_id>.<dataset_name>.object_tracking_analysis` 
+WHERE gcsUri like '%<source_bucket_name>%'
+GROUP by  gcsUri, file_data.entity
+ORDER by max_confidence DESC
+```
+
+*  In our pipeline configuration, we used "entity=window, person" and "confidence=0.9" as pipeline arguments to filter out the response.  You can use this parameters to filter out any object in the clips that may be requried to for near real time actions like notification. You can use the command below to pull message from thee output subscription. 
+
+```gcloud pubsub subscriptions pull ${OUTPUT_SUBSCRIPTION_ID} --auto-ack --limit 1 --project $PROJECT_ID 
+```
+
+* You should see following json output.  
+
+```{
+   "gcsUri":"/drone-video-dataset/gbikes_dinosaur.mp4",
+   "file_data":{
+      "entity":"person",
+      "confidence":0.9411579370498657,
+      "startTimeOffset":"28.833333",
+      "endTimeOffset":"29.433333"
+   },
+   "frame_data":{
+      "detections":[
+         {
+            "frame":1,
+            "timeOffset":"28.833333",
+            "x":0.044736248,
+            "y":0.6212879,
+            "w":0.101860054,
+            "h":0.8296899
+         },
+         {
+            "frame":2,
+            "timeOffset":"28.933333",
+            "x":0.024250263,
+            "y":0.58061814,
+            "w":0.08128166,
+            "h":0.7889516
+         },
+         {
+            "frame":3,
+            "timeOffset":"29.033333",
+            "x":0.02043231,
+            "y":0.5591222,
+            "w":0.077463575,
+            "h":0.7674556
+         },
+         {
+            "frame":4,
+            "timeOffset":"29.133333",
+            "x":0.029356558,
+            "y":0.56631297,
+            "w":0.08638781,
+            "h":0.7746463
+         },
+         {
+            "frame":5,
+            "timeOffset":"29.233333000000002",
+            "x":0.05688007,
+            "y":0.59617907,
+            "w":0.095578365,
+            "h":0.76954556
+         },
+         {
+            "frame":6,
+            "timeOffset":"29.333333",
+            "x":0.061868794,
+            "y":0.61623406,
+            "w":0.09874276,
+            "h":0.78598607
+         },
+         {
+            "frame":7,
+            "timeOffset":"29.433333",
+            "x":0.06440044,
+            "y":0.64491415,
+            "w":0.10113216,
+            "h":0.8143843
+         }
+      ]
+   }
+}
+```
 
 
