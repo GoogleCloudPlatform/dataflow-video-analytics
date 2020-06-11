@@ -7,7 +7,6 @@ This repo contains a reference implementations for video analytics solutions by 
 	* [Build & Run Using Dataflow Flex Template](#build-run).  
 	* [Test Using a Drone  Video Clip Dataset from Kaggle ](#test). 
 	* [Custom Json Output and Filtering ](#custom-json-output-and-filtering ). 
- 
 
 ## Object Detection in Video Clips 
 Many customers across various industries  are producing large volumes of unstructured  data and are looking for easy to use streaming solutions to  analyze in near real time. For example, alarm monitoring companies want to augment motion sensor data with the analysis of video clips (and, eventually, live video feeds) to determine if a dispatch of a security team to a customer’s premises is justified and therefore reduce the false positive rate that drives the costs of their operations up. This section of this repo highlights how you can use this pipeline to detect objects in large scale video clips and customize the Json response for downstream systems to consume.  
@@ -27,103 +26,138 @@ For testing purpose, we use this [dataset](https://www.kaggle.com/kmader/drone-v
 	 * In a PubSub topic by customizing the Json response so that downstream applications can consume in near real time. 
 
 ### Build & Run
-1. Create  two buckets , one to store input dataset and another one to store fle template config file
 
-```export DRONE_VIDEO_CLIPS_BUCKET=${PROJECT_ID}_drone_dataset
-export DF_TEMPLATE_BUCKET=${PROJECT_ID}_df_temp_config
-gsutil mb -c standard -l <var>region</var> gs://${DRONE_VIDEO_CLIPS_BUCKET}
-gsutil mb -c standard -l <var>region</var> gs://${DF_TEMPLATE_BUCKET}
+1. Enable some Google Cloud APIs:
+
+```
+gcloud services enable dataflow.googleapis.com containerregistry.googleapis.com videointelligence.googleapis.com
 ```
 
-2. Create required topics and subscriptions as below
+2. Set some environment variables (replace values with your project ID and preferred region):
 
-```export INPUT_TOPIC_ID=<var>topic-id</var>
-export INPUT_SUBSCRIPTION_ID=<var>subscription-id</var>
-export OUTPUT_TOPIC_ID=<var>topic-id</var>
-export OUTPUT_SUBSCRIPTION_ID=<var>subscription-id</var>
-gcloud pubsub topics create $INPUT_TOPIC_ID
-gcloud pubsub subscriptions create $INPUT_SUBSCRIPTION_ID --topic=$OUTPUT_TOPIC_ID
-gcloud pubsub topics create $OUTPUT_TOPIC_ID
-gcloud pubsub subscriptions create $OUTPUT_SUBSCRIPTION_ID --topic=$OUTPUT_TOPIC_ID
+```
+export PROJECT=[PROJECT]
+export REGION=[REGION]
 ```
 
-3. Create a BigQuery Dataset and Table. 
+3. Create two buckets, one to store input video files and another one to store Dataflow Flex template config files:
 
-```export DATASET_NAME=<var>dataset-name</var>
-bq --location=US mk -d \
+```
+export DRONE_VIDEO_CLIPS_BUCKET=${PROJECT}_drone_dataset
+export DATAFLOW_TEMPLATE_BUCKET=${PROJECT}_dataflow_template_config
+gsutil mb -c standard -l ${REGION} gs://${DRONE_VIDEO_CLIPS_BUCKET}
+gsutil mb -c standard -l ${REGION} gs://${DATAFLOW_TEMPLATE_BUCKET}
+```
+
+4. Create required topics and subscriptions as below
+
+```
+export GCS_NOTIFICATION_TOPIC="gcs-notification-topic"
+export GCS_NOTIFICATION_SUBSCRIPTION="gcs-notification-subscription"
+export OBJECT_DETECTION_TOPIC="object-detection-topic"
+export OBJECT_DETECTION_SUBSCRIPTION="object-detection-subscription"
+gcloud pubsub topics create ${GCS_NOTIFICATION_TOPIC}
+gcloud pubsub subscriptions create ${GCS_NOTIFICATION_SUBSCRIPTION} --topic=${GCS_NOTIFICATION_TOPIC}
+gcloud pubsub topics create ${OBJECT_DETECTION_TOPIC}
+gcloud pubsub subscriptions create ${OBJECT_DETECTION_SUBSCRIPTION} --topic=${OBJECT_DETECTION_TOPIC}
+```
+
+5. Create a BigQuery dataset and Table. 
+
+```
+export BIGQUERY_DATASET="video_analytics"
+
+bq mk -d \
+--location=US \
 --description "vide-object-tracking-dataset" \
-${DATASET_NAME}
-bq mk -t --schema src/main/resources/table_schema.json \
+${BIGQUERY_DATASET}
+
+bq mk -t \
+--schema src/main/resources/table_schema.json \
 --description "object_tracking_data" \
-${PROJECT_ID}:${DATASET_NAME}.object_tracking_analysis
+${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis
 ```
 
-4. Gradle Build
+6. Gradle Build
 
-```gradle spotlessApply -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPipeline 
+```
+gradle spotlessApply -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPipeline 
 gradle build -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPipeline 
 ```  
 
-5.  Trigger using Gradle Run 
-This configuration is defaulted to 1
+7.  Trigger using Gradle Run 
+
+This configuration is defaulted to 1 
 
 - 1 second processing time
 - filter for window and person entity with confidence greater than 90%
 
 ```
 gradle run -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPipeline \
--Pargs=" --topicId=projects/next-demo-2020/topics/video-analysis --runner=DirectRunner \
---project=${PROJECT_ID} --autoscalingAlgorithm=THROUGHPUT_BASED --workerMachineType=n1-highmem-4 \
---numWorkers=3 --maxNumWorkers=5 --region=us-central1 \
---subscriberId=projects/${PROJECT_ID}/subscriptions/${INPUT_SUBSCRIPTION_ID} \
+-Pargs=" --topicId=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC} --runner=DataflowRunner \
+--project=${PROJECT} --autoscalingAlgorithm=THROUGHPUT_BASED --workerMachineType=n1-highmem-4 \
+--numWorkers=3 --maxNumWorkers=5 --region=${REGION} \
+--subscriberId=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION} \
 --features=OBJECT_TRACKING --entity=window,person --windowInterval=1 \
---keyRange=8 --tableSpec=${PROJECT_ID}:${DATASET_NAME}.object_tracking_analysis \
---confidence=0.9 --topicId=projects/${PROJECT_ID}/topic/${OUTPUT_TOPIC_ID}" 
+--keyRange=8 --tableSpec=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis \
+--confidence=0.9"
 ```
 
-6. Create a docker image for flex template. 
+8. Create a docker image for flex template. 
  
-```gradle jib --image=gcr.io/${PROJECT_ID}/df-video-analytics:latest -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPipeline
+```
+gradle jib \
+-Djib.to.image=gcr.io/${PROJECT}/df-video-analytics:latest \
+-Djib.to.credHelper=gcloud \
+-DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPipeline
 ```
 
-7. Update the template config file src/main/resources/dynamic_template_video_analytics.json with image name and upload it to a Cloud Storage bucket.
+9. Upload the template JSON config file to GCS.
 
 ```
-cat << EOF | gsutil cp - gs://${DF_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json
+cat << EOF | gsutil cp - gs://${DATAFLOW_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json
 {
-  "image": "gcr.io/${PROJECT_ID}/dataflow-video-analytics-image",
+  "image": "gcr.io/${PROJECT}/dataflow-video-analytics-image",
   "sdk_info": {"language": "JAVA"}
 }
 EOF
 ```
 
+10. Trigger using Dataflow flex template
 
-8. Trigger using Dataflow flex template
-
-```gcloud beta dataflow flex-template run "video-object-tracking" \
---project=${PROJECT_ID} --region=us-central1 \ --template-file-gcs-location=gs://${DF_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json \
---parameters=^~^autoscalingAlgorithm="NONE"~numWorkers=5~maxNumWorkers=5 \
+```
+gcloud beta dataflow flex-template run "video-object-tracking" \
+--project=${PROJECT} \
+--region=us-central1 \
+--template-file-gcs-location=gs://${DATAFLOW_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json \
+--parameters=<<'EOF'
+^~^autoscalingAlgorithm="NONE"~numWorkers=5~maxNumWorkers=5 \
 ~workerMachineType=n1-highmem-4 \
-~subscriberId=projects/${PROJECT_ID}/subscriptions/${INPUT_SUBSCRIPTION_ID} \
-~tableSpec=${PROJECT_ID}:${DATASET_NAME}.object_tracking_analysis \
+~subscriberId=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION} \
+~tableSpec=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis \
 ~features=OBJECT_TRACKING~entity=window,person~windowInterval=1 \
 ~streaming=true~keyRange=8~confidence=0.9 \
-~topicId=projects/${PROJECT_ID}/topics/${OUTPUT_TOPIC_ID} 
+~topicId=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC}
+EOF
 ```
 
 ### Test
 1.  Validate the pipeline is running from the Dataflow console
  ![ref_arch](diagram/video_dag.png)
  
-2. Copy test files to the bucket 
-1. Enable GCS metadata notification for the PubSub and copy sample data to your bucket. 
+2. Enable GCS metadata notification for the PubSub and copy sample data to your bucket. 
 
 ```
-gsutil notification create -t ${INPUT_TOPIC_ID} -f json gs://${DRONE_VIDEO_CLIPS_BUCKET}
-gsutil -m cp gs://df-video-analytics-drone-dataset/* gs://${DRONE_VIDEO_CLIPS_BUCKET}
+gsutil notification create -t ${GCS_NOTIFICATION_TOPIC} -f json gs://${DRONE_VIDEO_CLIPS_BUCKET}
 ```
 
-3. Please validate if pipeline has successfully processed the data by looking the elements count in the write transform. 
+3. Copy test files to the bucket:
+
+```
+gsutil -m cp "gs://df-video-analytics-drone-dataset/*" gs://${DRONE_VIDEO_CLIPS_BUCKET}
+```
+
+4. Please validate if pipeline has successfully processed the data by looking the elements count in the write transform. 
 
  ![t1](diagram/transform_1.png)
  
@@ -144,18 +178,17 @@ Pipeline uses a nested table in BigQuery to store the API response and also publ
 
 ```
 SELECT  gcsUri, file_data.entity, max(file_data.confidence) as max_confidence 
-FROM `<project_id>.<dataset_name>.object_tracking_analysis` 
-WHERE gcsUri like '%<source_bucket_name>%'
+FROM `video_analytics.object_tracking_analysis` 
+WHERE gcsUri like '%_drone_dataset%'
 GROUP by  gcsUri, file_data.entity
 ORDER by max_confidence DESC
 ```
  ![t4](diagram/top_entity_by_file.png). 
 
-*  In the test pipeline, you can see from this argument  "entity=window, person" and "confidence=0.9" , pipeline is filtering the response that may be required  for near real time processing for downstream applications.  You can use the command below to see the publish message from the output subscription. 
-
+*  In the test pipeline, you can see from this argument  "entity=window,person" and "confidence=0.9" , pipeline is filtering the response that may be required  for near real time processing for downstream applications.  You can use the command below to see the publish message from the output subscription. 
 
 ```
-gcloud pubsub subscriptions pull ${OUTPUT_SUBSCRIPTION_ID} --auto-ack --limit 1 --project $PROJECT_ID 
+gcloud pubsub subscriptions pull ${OBJECT_DETECTION_SUBSCRIPTION} --auto-ack --limit 1 --project ${PROJECT}
 ```
 
 
