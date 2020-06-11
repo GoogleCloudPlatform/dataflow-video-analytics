@@ -1,5 +1,5 @@
 # Video Analytics Solution Using Dataflow & Video AI
-This repo contains a reference implementations for a series of  video analytics solutions by using Dataflow & Video AI.  The goal is to provide an easy to use end to end solution to process large scale unstructured video data by bringing multiple data streams together to drive insight using Video AI. 
+This repo contains a reference implementations for video analytics solutions by using Dataflow & Video AI.  The goal is to provide an easy to use end to end solution to process large scale unstructured video data by bringing multiple data streams together to drive insight using Video AI. 
 
 ## Table of Contents  
 * [Object Detection in Video Clips](#object-detection-in-video-clips).  
@@ -88,7 +88,8 @@ gradle run -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPip
 
 7. Update the template config file src/main/resources/dynamic_template_video_analytics.json with image name and upload it to a Cloud Storage bucket.
 
-```cat << EOF | gsutil cp - gs://${DF_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json
+```
+cat << EOF | gsutil cp - gs://${DF_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json
 {
   "image": "gcr.io/${PROJECT_ID}/dataflow-video-analytics-image",
   "sdk_info": {"language": "JAVA"}
@@ -133,7 +134,7 @@ gsutil -m cp gs://df-video-analytics-drone-dataset/* gs://${DRONE_VIDEO_CLIPS_BU
  ![t4](diagram/transform_4.png)
 
 ### Custom Json Output and Filtering 
-Pipeline uses a nested table in BigQuery to store the API response and also publishes a customized json message to a PubSub topic so that downstream applications can consume it in near real time. This reference implementation shows how you can customize the standard Json response received from Video intelligence API by using [Row/Schema](/src/master/main/java/com/google/solutions/df/video/analytics/common/Util.java#30) and built in Beam transform like [ToJson and Filter](src/master/main/java/com/google/solutions/df/video/analytics/common/ResponseWriteTransform.java#66) by column name. 
+Pipeline uses a nested table in BigQuery to store the API response and also publishes a customized json message to a PubSub topic so that downstream applications can consume it in near real time. This reference implementation shows how you can customize the standard Json response received from Video intelligence API by using [Row/Schema](https://github.com/GoogleCloudPlatform/dataflow-video-analytics/blob/master/src/main/java/com/google/solutions/df/video/analytics/common/Util.java) and built in Beam transform like [ToJson and Filter](https://github.com/GoogleCloudPlatform/dataflow-video-analytics/blob/master/src/main/java/com/google/solutions/df/video/analytics/common/ResponseWriteTransform.java) by column name. 
 
 #### BigQuery Schema 
 
