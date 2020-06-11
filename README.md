@@ -88,11 +88,12 @@ gradle run -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPip
 
 7. Update the template config file src/main/resources/dynamic_template_video_analytics.json with image name and upload it to a Cloud Storage bucket.
 
-```nano dynamic_template_video_analytics.json
-{"image": "gcr.io/<var>project-id</var>/df-video-analytics",
- "sdk_info": {"language": "JAVA"}
+```cat << EOF | gsutil cp - gs://${DF_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json
+{
+  "image": "gcr.io/${PROJECT_ID}/dataflow-video-analytics-image",
+  "sdk_info": {"language": "JAVA"}
 }
-gsutil cp src/main/resources/dynamic_template_video_analytics.json gs://${DF_TEMPLATE_BUCKET}/
+EOF
 ```
 
 
