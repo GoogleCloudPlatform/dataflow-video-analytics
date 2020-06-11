@@ -69,8 +69,8 @@ public abstract class VideoApiTransform extends PTransform<PCollection<String>, 
   public PCollection<Row> expand(PCollection<String> input) {
 
     return input
-        .apply("AddRandomKey", WithKeys.of(new Random().nextInt(keyRange())))
-        .apply("ProcessingTimeDelay", ParDo.of(new BatchRequest(windowInterval())))
+        //.apply("AddRandomKey", WithKeys.of(new Random().nextInt(keyRange())))
+        //.apply("ProcessingTimeDelay", ParDo.of(new BatchRequest(windowInterval())))
         .apply(
             "AnnotateVideoFiles",
             ParDo.of(
