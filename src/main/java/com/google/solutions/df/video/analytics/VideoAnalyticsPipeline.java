@@ -25,8 +25,12 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,10 +50,17 @@ public class VideoAnalyticsPipeline {
     Pipeline p = Pipeline.create(options);
     PCollection<String> videoFilesWithContext =
         p.apply(
-            "TransformInputRequest",
-            AnnotationRequestTransform.newBuilder()
-                .setSubscriber(options.getSubscriberId())
-                .build());
+                "TransformInputRequest",
+                AnnotationRequestTransform.newBuilder()
+                    .setSubscriber(options.getSubscriberId())
+                    .build())
+            .apply(
+                "FixedWindow",
+                Window.<String>into(
+                        FixedWindows.of(Duration.standardSeconds(options.getWindowInterval())))
+                    .triggering(AfterWatermark.pastEndOfWindow())
+                    .discardingFiredPanes()
+                    .withAllowedLateness(Duration.ZERO));
     PCollection<Row> annotationResult =
         videoFilesWithContext
             .apply(
@@ -57,7 +68,6 @@ public class VideoAnalyticsPipeline {
                 VideoApiTransform.newBuilder()
                     .setFeatures(options.getFeatures())
                     .setKeyRange(options.getKeyRange())
-                    .setWindowInterval(options.getWindowInterval())
                     .build())
             .setRowSchema(Util.videoMlCustomOutputSchema);
 

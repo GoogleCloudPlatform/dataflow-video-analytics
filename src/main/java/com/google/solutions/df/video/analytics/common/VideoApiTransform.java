@@ -17,7 +17,6 @@ package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.videointelligence.v1.Feature;
-import com.google.common.base.MoreObjects;
 import java.util.Collections;
 import java.util.Random;
 import org.apache.beam.sdk.extensions.ml.VideoIntelligence;
@@ -28,15 +27,17 @@ import org.apache.beam.sdk.state.TimeDomain;
 import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.state.TimerSpec;
 import org.apache.beam.sdk.state.TimerSpecs;
-import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.OnTimer;
+import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
+import org.apache.beam.sdk.transforms.DoFn.StateId;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,15 +47,11 @@ public abstract class VideoApiTransform extends PTransform<PCollection<String>, 
 
   public abstract Integer keyRange();
 
-  public abstract Integer windowInterval();
-
   public abstract Feature features();
 
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setKeyRange(Integer keyRange);
-
-    public abstract Builder setWindowInterval(Integer windowInterval);
 
     public abstract Builder setFeatures(Feature features);
 
@@ -70,7 +67,7 @@ public abstract class VideoApiTransform extends PTransform<PCollection<String>, 
 
     return input
         //.apply("AddRandomKey", WithKeys.of(new Random().nextInt(keyRange())))
-        //.apply("ProcessingTimeDelay", ParDo.of(new BatchRequest(windowInterval())))
+        //.apply("ProcessingTimeDelay", ParDo.of(new BatchRequest()))
         .apply(
             "AnnotateVideoFiles",
             ParDo.of(
@@ -79,50 +76,27 @@ public abstract class VideoApiTransform extends PTransform<PCollection<String>, 
   }
 
   public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
-    private Integer windowInterval;
-
-    public BatchRequest(Integer windowInterval) {
-      this.windowInterval = windowInterval;
-    }
 
     @StateId("elementsBag")
     private final StateSpec<BagState<String>> elementsBag = StateSpecs.bag();
 
-    @TimerId("eventTimer")
-    private final TimerSpec timer = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
-
-    @StateId("isTimerSet")
-    private final StateSpec<ValueState<Boolean>> isTimerSet = StateSpecs.value();
-
     @ProcessElement
     public void process(
         @Element KV<Integer, String> element,
-        @StateId("elementsBag") BagState<String> elementsBag,
-        @StateId("isTimerSet") ValueState<Boolean> isTimerSetState,
-        @TimerId("eventTimer") Timer eventTimer) {
+        @StateId("elementsBag") BagState<String> elementsBag) {
       elementsBag.add(element.getValue());
-      if (!MoreObjects.firstNonNull(isTimerSetState.read(), false)) {
-        eventTimer.offset(Duration.standardSeconds(windowInterval)).setRelative();
-        isTimerSetState.write(true);
-      }
     }
 
-    @OnTimer("eventTimer")
-    public void onTimer(
-        @StateId("elementsBag") BagState<String> elementsBag,
-        OutputReceiver<String> output,
-        @StateId("isTimerSet") ValueState<Boolean> isTimerSetState) {
-
+    @OnWindowExpiration 
+    public void onWindowExpiration (
+        @StateId("elementsBag") BagState<String> elementsBag, OutputReceiver<String> output) {
       elementsBag
           .read()
           .forEach(
               file -> {
                 output.output(file);
-                LOG.info("Timer Triggered for file {}", file);
               });
-
       elementsBag.clear();
-      isTimerSetState.clear();
     }
   }
 }
