@@ -92,7 +92,7 @@ public class ObjectTrackerOutputDoFn extends DoFn<List<VideoAnnotationResults>, 
                                     .addArray(frameDataList)
                                     .build())
                             .build();
-                    LOG.debug("Row {}", outputRow);
+                    LOG.info("Row {}", outputRow);
                     c.output(outputRow);
                   });
         });

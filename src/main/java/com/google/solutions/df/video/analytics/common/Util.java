@@ -82,4 +82,10 @@ public class Util {
   public static String convertToSec(Duration offset) {
     return String.valueOf(offset.getSeconds() + offset.getNanos() / 1e9);
   }
+
+  public static Duration convertDoubleToSec(Double value) {
+
+    Double millis = value * 1000;
+    return Duration.newBuilder().setSeconds(millis.longValue()).build();
+  }
 }

@@ -17,24 +17,17 @@ package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.videointelligence.v1.Feature;
+import com.google.cloud.videointelligence.v1.VideoContext;
 import java.util.Collections;
-import java.util.Random;
 import org.apache.beam.sdk.extensions.ml.VideoIntelligence;
 import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
-import org.apache.beam.sdk.state.TimeDomain;
-import org.apache.beam.sdk.state.Timer;
-import org.apache.beam.sdk.state.TimerSpec;
-import org.apache.beam.sdk.state.TimerSpecs;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.OnTimer;
 import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.beam.sdk.transforms.DoFn.StateId;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.WithKeys;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -42,7 +35,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class VideoApiTransform extends PTransform<PCollection<String>, PCollection<Row>> {
+public abstract class VideoApiTransform
+    extends PTransform<PCollection<KV<String, VideoContext>>, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoApiTransform.class);
 
   public abstract Integer keyRange();
@@ -63,15 +57,16 @@ public abstract class VideoApiTransform extends PTransform<PCollection<String>, 
   }
 
   @Override
-  public PCollection<Row> expand(PCollection<String> input) {
+  public PCollection<Row> expand(PCollection<KV<String, VideoContext>> input) {
 
     return input
-        //.apply("AddRandomKey", WithKeys.of(new Random().nextInt(keyRange())))
-        //.apply("ProcessingTimeDelay", ParDo.of(new BatchRequest()))
+        // .apply("AddRandomKey", WithKeys.of(new Random().nextInt(keyRange())))
+        // .apply("ProcessingTimeDelay", ParDo.of(new BatchRequest()))
         .apply(
             "AnnotateVideoFiles",
             ParDo.of(
-                VideoIntelligence.annotateFromURI(Collections.singletonList(features()), null)))
+                VideoIntelligence.annotateFromUriWithContext(
+                    Collections.singletonList(features()))))
         .apply("ProcessResponse", ParDo.of(new ObjectTrackerOutputDoFn()));
   }
 
@@ -87,8 +82,8 @@ public abstract class VideoApiTransform extends PTransform<PCollection<String>, 
       elementsBag.add(element.getValue());
     }
 
-    @OnWindowExpiration 
-    public void onWindowExpiration (
+    @OnWindowExpiration
+    public void onWindowExpiration(
         @StateId("elementsBag") BagState<String> elementsBag, OutputReceiver<String> output) {
       elementsBag
           .read()

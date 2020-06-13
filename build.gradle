@@ -87,6 +87,7 @@ dependencies {
     annotationProcessor "com.google.auto.value:auto-value:1.6.2"
     testCompile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
     testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.30'
+    
 	
 
 }

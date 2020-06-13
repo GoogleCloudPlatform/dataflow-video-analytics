@@ -16,19 +16,24 @@
 package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class AnnotationRequestTransform extends PTransform<PBegin, PCollection<String>> {
+public abstract class AnnotationRequestTransform
+    extends PTransform<PBegin, PCollection<KV<String, String>>> {
   public static final Logger LOG = LoggerFactory.getLogger(AnnotationRequestTransform.class);
 
   public abstract String subscriber();
@@ -45,7 +50,7 @@ public abstract class AnnotationRequestTransform extends PTransform<PBegin, PCol
   }
 
   @Override
-  public PCollection<String> expand(PBegin input) {
+  public PCollection<KV<String, String>> expand(PBegin input) {
     return input
         .apply(
             "ReadFileMetadata",
@@ -53,20 +58,32 @@ public abstract class AnnotationRequestTransform extends PTransform<PBegin, PCol
         .apply("ConvertToGCSUri", ParDo.of(new MapPubSubMessage()));
   }
 
-  public class MapPubSubMessage extends DoFn<PubsubMessage, String> {
+  public class MapPubSubMessage extends DoFn<PubsubMessage, KV<String, String>> {
+
+    public Gson gson;
+
+    @Setup
+    public void setup() {
+      gson = new Gson();
+    }
 
     @ProcessElement
     public void processElement(ProcessContext c) {
       String bucket = c.element().getAttribute("bucketId");
       String object = c.element().getAttribute("objectId");
       String eventType = c.element().getAttribute("eventType");
+
       GcsPath uri = GcsPath.fromComponents(bucket, object);
 
       if (eventType.equalsIgnoreCase(Util.ALLOWED_NOTIFICATION_EVENT_TYPE)) {
         String fileName = uri.toString();
         if (fileName.matches(Util.FILE_PATTERN)) {
-          c.output(fileName);
-          LOG.info("File Output {}", fileName);
+          String payload = new String(c.element().getPayload(), StandardCharsets.US_ASCII);
+          JsonObject convertedObject = gson.fromJson(payload, JsonObject.class);
+          String videoClipLength =
+              convertedObject.get("metadata").getAsJsonObject().get("duration").getAsString();
+          c.output(KV.of(fileName, videoClipLength));
+          LOG.info("Video File {} Clip Length {} ", fileName, videoClipLength);
         } else {
           LOG.warn(Util.NO_VALID_EXT_FOUND_ERROR_MESSAGE, fileName);
         }

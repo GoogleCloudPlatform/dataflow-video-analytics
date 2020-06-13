@@ -64,4 +64,10 @@ public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
   String getTableSpec();
 
   void setTableSpec(String value);
+  
+  @Description("Chunk Size in Seconds")
+  @Default.Integer(3)
+  Integer getChunkSize();
+
+  void setChunkSize(Integer value);
 }
