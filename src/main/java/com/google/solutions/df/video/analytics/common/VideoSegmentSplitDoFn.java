@@ -15,9 +15,13 @@
  */
 package com.google.solutions.df.video.analytics.common;
 
+import com.google.cloud.videointelligence.v1.VideoContext;
+import com.google.cloud.videointelligence.v1.VideoSegment;
+import com.google.protobuf.Duration;
 import java.io.IOException;
-
 import org.apache.beam.sdk.io.range.OffsetRange;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.splittabledofn.OffsetRangeTracker;
 import org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker;
@@ -25,44 +29,42 @@ import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.cloud.videointelligence.v1.VideoContext;
-import com.google.cloud.videointelligence.v1.VideoSegment;
-import com.google.protobuf.Duration;
-
 public class VideoSegmentSplitDoFn extends DoFn<KV<String, String>, KV<String, VideoContext>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoSegmentSplitDoFn.class);
   private Integer chunkSize;
+  private final Counter numberOfRequests =
+      Metrics.counter(VideoSegmentSplitDoFn.class, "numberOfRequests");
+
   public VideoSegmentSplitDoFn(Integer chunkSize) {
-	this.chunkSize=chunkSize;  
+    this.chunkSize = chunkSize;
   }
 
   @ProcessElement
   public void processElement(ProcessContext c, RestrictionTracker<OffsetRange, Long> tracker) {
     Double duration = Double.valueOf(c.element().getValue());
     for (long i = tracker.currentRestriction().getFrom(); tracker.tryClaim(i); ++i) {
-      Double startOffset = Double.valueOf((i * chunkSize) - BATCH_SIZE);
+      Double startOffset = Double.valueOf((i * chunkSize) - chunkSize);
       if (startOffset < duration) {
         Double endOffset = startOffset + chunkSize;
         if (endOffset > duration) {
           endOffset = Math.rint(duration);
         }
-        if(startOffset<endOffset) {
-        	VideoSegment videoSegment =
-                    VideoSegment.newBuilder()
-                        .setStartTimeOffset(Duration.newBuilder().setSeconds(startOffset.longValue()).build())
-                        .setEndTimeOffset(Duration.newBuilder().setSeconds(endOffset.longValue()).build())
-                        .build();
-            VideoContext context = VideoContext.newBuilder().addSegments(videoSegment).build();
-            LOG.info(
-                "File Name {} duration {} Video Context {}",
-                c.element().getKey(),
-                c.element().getValue(),
-                context.toString());
-
-            c.output(KV.of(c.element().getKey(), context));
+        if (startOffset < endOffset) {
+          VideoSegment videoSegment =
+              VideoSegment.newBuilder()
+                  .setStartTimeOffset(
+                      Duration.newBuilder().setSeconds(startOffset.longValue()).build())
+                  .setEndTimeOffset(Duration.newBuilder().setSeconds(endOffset.longValue()).build())
+                  .build();
+          VideoContext context = VideoContext.newBuilder().addSegments(videoSegment).build();
+          LOG.debug(
+              "File Name {} Clip Length {} Video Context {}",
+              c.element().getKey(),
+              c.element().getValue(),
+              context.toString());
+          numberOfRequests.inc();
+          c.output(KV.of(c.element().getKey(), context));
         }
-        
-        
       }
     }
   }

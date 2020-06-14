@@ -20,6 +20,9 @@ import com.google.cloud.videointelligence.v1.VideoAnnotationResults;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
@@ -27,11 +30,12 @@ import org.slf4j.LoggerFactory;
 
 public class ObjectTrackerOutputDoFn extends DoFn<List<VideoAnnotationResults>, Row> {
   public static final Logger LOG = LoggerFactory.getLogger(AnnotationRequestTransform.class);
+  private final Counter numberOfResponse = Metrics.counter(ObjectTrackerOutputDoFn.class, "numberOfResponses");
 
   @ProcessElement
   public void processElement(ProcessContext c) {
     List<VideoAnnotationResults> results = c.element();
-
+    numberOfResponse.inc(results.size());
     results.forEach(
         result -> {
           String gcsUri = result.getInputUri();
@@ -92,7 +96,7 @@ public class ObjectTrackerOutputDoFn extends DoFn<List<VideoAnnotationResults>, 
                                     .addArray(frameDataList)
                                     .build())
                             .build();
-                    LOG.info("Row {}", outputRow);
+                    LOG.info("Response {}", outputRow.toString());
                     c.output(outputRow);
                   });
         });

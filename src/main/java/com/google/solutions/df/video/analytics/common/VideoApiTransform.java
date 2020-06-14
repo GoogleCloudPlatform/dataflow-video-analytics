@@ -20,12 +20,7 @@ import com.google.cloud.videointelligence.v1.Feature;
 import com.google.cloud.videointelligence.v1.VideoContext;
 import java.util.Collections;
 import org.apache.beam.sdk.extensions.ml.VideoIntelligence;
-import org.apache.beam.sdk.state.BagState;
-import org.apache.beam.sdk.state.StateSpec;
-import org.apache.beam.sdk.state.StateSpecs;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
-import org.apache.beam.sdk.transforms.DoFn.StateId;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
@@ -60,38 +55,21 @@ public abstract class VideoApiTransform
   public PCollection<Row> expand(PCollection<KV<String, VideoContext>> input) {
 
     return input
-        // .apply("AddRandomKey", WithKeys.of(new Random().nextInt(keyRange())))
-        // .apply("ProcessingTimeDelay", ParDo.of(new BatchRequest()))
+        .apply(
+            "RequestValidator",
+            ParDo.of(
+                new DoFn<KV<String, VideoContext>, KV<String, VideoContext>>() {
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    LOG.info("Request {}", c.element().toString());
+                    c.output(c.element());
+                  }
+                }))
         .apply(
             "AnnotateVideoFiles",
             ParDo.of(
                 VideoIntelligence.annotateFromUriWithContext(
                     Collections.singletonList(features()))))
         .apply("ProcessResponse", ParDo.of(new ObjectTrackerOutputDoFn()));
-  }
-
-  public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
-
-    @StateId("elementsBag")
-    private final StateSpec<BagState<String>> elementsBag = StateSpecs.bag();
-
-    @ProcessElement
-    public void process(
-        @Element KV<Integer, String> element,
-        @StateId("elementsBag") BagState<String> elementsBag) {
-      elementsBag.add(element.getValue());
-    }
-
-    @OnWindowExpiration
-    public void onWindowExpiration(
-        @StateId("elementsBag") BagState<String> elementsBag, OutputReceiver<String> output) {
-      elementsBag
-          .read()
-          .forEach(
-              file -> {
-                output.output(file);
-              });
-      elementsBag.clear();
-    }
   }
 }

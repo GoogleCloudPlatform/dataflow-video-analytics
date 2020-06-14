@@ -21,7 +21,9 @@ import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.schemas.transforms.Filter;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
@@ -69,6 +71,15 @@ public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>
                     ent -> entityList().stream().anyMatch(obj -> obj.equals(ent)))
                 .whereFieldName("file_data.confidence", (Double con) -> con > confidence()))
         .apply("ConvertToJson", ToJson.of())
+        .apply(
+            "PrettyPrint",
+            ParDo.of(
+                new DoFn<String, String>() {
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    LOG.info("Json {}", c.element().toString());
+                  }
+                }))
         .apply("WriteToTopic", PubsubIO.writeStrings().to(topic()));
   }
 }

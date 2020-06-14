@@ -65,7 +65,7 @@ public class VideoAnalyticsPipeline {
                     .triggering(AfterWatermark.pastEndOfWindow())
                     .discardingFiredPanes()
                     .withAllowedLateness(Duration.ZERO))
-            .apply("ChunkClips", ParDo.of(new VideoSegmentSplitDoFn(options.getChunkSize())));
+            .apply("SplitSegment", ParDo.of(new VideoSegmentSplitDoFn(options.getChunkSize())));
 
     PCollection<Row> annotationResult =
         videoFilesWithContext
