@@ -59,13 +59,8 @@ public class VideoAnalyticsPipeline {
                     .setSubscriber(options.getSubscriberId())
                     .build())
             .apply(
-                "FixedWindow",
-                Window.<KV<String, String>>into(
-                        FixedWindows.of(Duration.standardSeconds(options.getWindowInterval())))
-                    .triggering(AfterWatermark.pastEndOfWindow())
-                    .discardingFiredPanes()
-                    .withAllowedLateness(Duration.ZERO))
-            .apply("SplitSegment", ParDo.of(new VideoSegmentSplitDoFn(options.getChunkSize())));
+                "SplitSegment",
+                ParDo.of(new VideoSegmentSplitDoFn(options.getChunkSize(), options.getKeyRange())));
 
     PCollection<Row> annotationResult =
         videoFilesWithContext
@@ -75,7 +70,14 @@ public class VideoAnalyticsPipeline {
                     .setFeatures(options.getFeatures())
                     .setKeyRange(options.getKeyRange())
                     .build())
-            .setRowSchema(Util.videoMlCustomOutputSchema);
+            .setRowSchema(Util.videoMlCustomOutputSchema)
+            .apply(
+                "FixedWindow",
+                Window.<Row>into(
+                        FixedWindows.of(Duration.standardSeconds(options.getWindowInterval())))
+                    .triggering(AfterWatermark.pastEndOfWindow())
+                    .discardingFiredPanes()
+                    .withAllowedLateness(Duration.ZERO));
 
     annotationResult.apply(
         "WriteResponse",

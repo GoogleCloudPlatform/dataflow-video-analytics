@@ -32,11 +32,13 @@ import org.slf4j.LoggerFactory;
 public class VideoSegmentSplitDoFn extends DoFn<KV<String, String>, KV<String, VideoContext>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoSegmentSplitDoFn.class);
   private Integer chunkSize;
+  private Integer keyRange;
   private final Counter numberOfRequests =
       Metrics.counter(VideoSegmentSplitDoFn.class, "numberOfRequests");
 
-  public VideoSegmentSplitDoFn(Integer chunkSize) {
+  public VideoSegmentSplitDoFn(Integer chunkSize, Integer keyRange) {
     this.chunkSize = chunkSize;
+    this.keyRange = keyRange;
   }
 
   @ProcessElement
@@ -63,6 +65,8 @@ public class VideoSegmentSplitDoFn extends DoFn<KV<String, String>, KV<String, V
               c.element().getValue(),
               context.toString());
           numberOfRequests.inc();
+          // String key = String.format("%s~%d", c.element().getKey(), new
+          // Random().nextInt(keyRange));
           c.output(KV.of(c.element().getKey(), context));
         }
       }

@@ -65,7 +65,6 @@ public abstract class AnnotationRequestTransform
     public Gson gson;
     private final Counter numberOfFiles = Metrics.counter(MapPubSubMessage.class, "numberOfFiles");
 
-
     @Setup
     public void setup() {
       gson = new Gson();

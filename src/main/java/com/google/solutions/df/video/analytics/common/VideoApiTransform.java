@@ -61,7 +61,8 @@ public abstract class VideoApiTransform
                 new DoFn<KV<String, VideoContext>, KV<String, VideoContext>>() {
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    LOG.info("Request {}", c.element().toString());
+                    // String fileName = c.element().getKey().split("\\~")[0];
+                    // LOG.debug("Request For File Name {}", fileName);
                     c.output(c.element());
                   }
                 }))
