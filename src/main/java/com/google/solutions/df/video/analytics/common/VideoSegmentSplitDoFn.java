@@ -19,6 +19,8 @@ import com.google.cloud.videointelligence.v1.VideoContext;
 import com.google.cloud.videointelligence.v1.VideoSegment;
 import com.google.protobuf.Duration;
 import java.io.IOException;
+import java.util.Random;
+
 import org.apache.beam.sdk.io.range.OffsetRange;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -65,9 +67,9 @@ public class VideoSegmentSplitDoFn extends DoFn<KV<String, String>, KV<String, V
               c.element().getValue(),
               context.toString());
           numberOfRequests.inc();
-          // String key = String.format("%s~%d", c.element().getKey(), new
-          // Random().nextInt(keyRange));
-          c.output(KV.of(c.element().getKey(), context));
+           String key = String.format("%s~%d", c.element().getKey(), new
+           Random().nextInt(keyRange));
+          c.output(KV.of(key, context));
         }
       }
     }
