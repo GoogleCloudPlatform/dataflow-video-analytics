@@ -15,11 +15,19 @@
  */
 package com.google.solutions.df.video.analytics.common;
 
+import com.google.api.gax.rpc.BidiStream;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.videointelligence.v1.Feature;
-import com.google.cloud.videointelligence.v1.VideoContext;
-import java.util.Collections;
-import org.apache.beam.sdk.extensions.ml.VideoIntelligence;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoRequest;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoResponse;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingFeature;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingLabelDetectionConfig;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoConfig;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoIntelligenceServiceClient;
+import com.google.protobuf.ByteString;
+import java.io.IOException;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -31,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 @AutoValue
 public abstract class VideoApiTransform
-    extends PTransform<PCollection<KV<String, VideoContext>>, PCollection<Row>> {
+    extends PTransform<PCollection<KV<String, ByteString>>, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoApiTransform.class);
 
   public abstract Integer keyRange();
@@ -52,25 +60,61 @@ public abstract class VideoApiTransform
   }
 
   @Override
-  public PCollection<Row> expand(PCollection<KV<String, VideoContext>> input) {
+  public PCollection<Row> expand(PCollection<KV<String, ByteString>> input) {
 
     return input
-        .apply(
-            "RequestValidator",
-            ParDo.of(
-                new DoFn<KV<String, VideoContext>, KV<String, VideoContext>>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext c) {
-                     String fileName = c.element().getKey().split("\\~")[0];
-                     LOG.debug("Request For File Name {}", fileName);
-                    c.output(KV.of(fileName, c.element().getValue()));
-                  }
-                }))
-        .apply(
-            "AnnotateVideoFiles",
-            ParDo.of(
-                VideoIntelligence.annotateFromUriWithContext(
-                    Collections.singletonList(features()))))
+        .apply("StreamingObjectTracking", ParDo.of(new StreamingObjectTracking()))
         .apply("ProcessResponse", ParDo.of(new ObjectTrackerOutputDoFn()));
+  }
+
+  public static class StreamingObjectTracking
+      extends DoFn<KV<String, ByteString>, KV<String, StreamingAnnotateVideoResponse>> {
+    private final Counter numberOfRequests =
+        Metrics.counter(VideoApiTransform.class, "numberOfRequests");
+
+    private StreamingVideoConfig streamingVideoConfig;
+    private StreamingVideoIntelligenceServiceClient client;
+    BidiStream<StreamingAnnotateVideoRequest, StreamingAnnotateVideoResponse> call;
+
+    @Setup
+    public void setup() throws IOException {
+      //      StreamingVideoConfig streamingVideoConfig =
+      //          StreamingVideoConfig.newBuilder()
+      //              .setFeature(StreamingFeature.STREAMING_OBJECT_TRACKING)
+      //              .build();
+      //      client = StreamingVideoIntelligenceServiceClient.create();
+      //      call = client.streamingAnnotateVideoCallable().call();
+      //      call.send(
+      //
+      // StreamingAnnotateVideoRequest.newBuilder().setVideoConfig(streamingVideoConfig).build());
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext c) throws IOException {
+      String fileName = c.element().getKey();
+      ByteString data = c.element().getValue();
+
+      try (StreamingVideoIntelligenceServiceClient client =
+          StreamingVideoIntelligenceServiceClient.create()) {
+        StreamingLabelDetectionConfig labelConfig =
+            StreamingLabelDetectionConfig.newBuilder().setStationaryCamera(false).build();
+        StreamingVideoConfig streamingVideoConfig =
+            StreamingVideoConfig.newBuilder()
+                .setFeature(StreamingFeature.STREAMING_OBJECT_TRACKING)
+                .setLabelDetectionConfig(labelConfig)
+                .build();
+        call = client.streamingAnnotateVideoCallable().call();
+        call.send(
+            StreamingAnnotateVideoRequest.newBuilder()
+                .setVideoConfig(streamingVideoConfig)
+                .build());
+        call.send(StreamingAnnotateVideoRequest.newBuilder().setInputContent(data).build());
+        numberOfRequests.inc();
+        call.closeSend();
+        for (StreamingAnnotateVideoResponse response : call) {
+          c.output(KV.of(fileName, response));
+        }
+      }
+    }
   }
 }

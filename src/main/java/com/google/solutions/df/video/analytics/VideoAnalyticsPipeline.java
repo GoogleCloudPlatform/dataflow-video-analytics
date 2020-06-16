@@ -15,7 +15,7 @@
  */
 package com.google.solutions.df.video.analytics;
 
-import com.google.cloud.videointelligence.v1.VideoContext;
+import com.google.protobuf.ByteString;
 import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform;
 import com.google.solutions.df.video.analytics.common.BQWriteTransform;
 import com.google.solutions.df.video.analytics.common.ResponseWriteTransform;
@@ -52,7 +52,7 @@ public class VideoAnalyticsPipeline {
 
   public static PipelineResult run(VideoAnalyticsPipelineOptions options) {
     Pipeline p = Pipeline.create(options);
-    PCollection<KV<String, VideoContext>> videoFilesWithContext =
+    PCollection<KV<String, ByteString>> videoFilesWithContext =
         p.apply(
                 "TransformInputRequest",
                 AnnotationRequestTransform.newBuilder()

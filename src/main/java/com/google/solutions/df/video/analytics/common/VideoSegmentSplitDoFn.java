@@ -15,15 +15,12 @@
  */
 package com.google.solutions.df.video.analytics.common;
 
-import com.google.cloud.videointelligence.v1.VideoContext;
-import com.google.cloud.videointelligence.v1.VideoSegment;
-import com.google.protobuf.Duration;
+import com.google.protobuf.ByteString;
 import java.io.IOException;
-import java.util.Random;
-
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import org.apache.beam.sdk.io.FileIO.ReadableFile;
 import org.apache.beam.sdk.io.range.OffsetRange;
-import org.apache.beam.sdk.metrics.Counter;
-import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.splittabledofn.OffsetRangeTracker;
 import org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker;
@@ -31,12 +28,10 @@ import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class VideoSegmentSplitDoFn extends DoFn<KV<String, String>, KV<String, VideoContext>> {
+public class VideoSegmentSplitDoFn extends DoFn<KV<String, ReadableFile>, KV<String, ByteString>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoSegmentSplitDoFn.class);
   private Integer chunkSize;
   private Integer keyRange;
-  private final Counter numberOfRequests =
-      Metrics.counter(VideoSegmentSplitDoFn.class, "numberOfRequests");
 
   public VideoSegmentSplitDoFn(Integer chunkSize, Integer keyRange) {
     this.chunkSize = chunkSize;
@@ -44,64 +39,55 @@ public class VideoSegmentSplitDoFn extends DoFn<KV<String, String>, KV<String, V
   }
 
   @ProcessElement
-  public void processElement(ProcessContext c, RestrictionTracker<OffsetRange, Long> tracker) {
-    Double duration = Double.valueOf(c.element().getValue());
-    for (long i = tracker.currentRestriction().getFrom(); tracker.tryClaim(i); ++i) {
-      Double startOffset = Double.valueOf((i * chunkSize) - chunkSize);
-      if (startOffset < duration) {
-        Double endOffset = startOffset + chunkSize;
-        if (endOffset > duration) {
-          endOffset = Math.rint(duration);
-        }
-        if (startOffset < endOffset) {
-          VideoSegment videoSegment =
-              VideoSegment.newBuilder()
-                  .setStartTimeOffset(
-                      Duration.newBuilder().setSeconds(startOffset.longValue()).build())
-                  .setEndTimeOffset(Duration.newBuilder().setSeconds(endOffset.longValue()).build())
-                  .build();
-          VideoContext context = VideoContext.newBuilder().addSegments(videoSegment).build();
-          LOG.debug(
-              "File Name {} Clip Length {} Video Context {}",
-              c.element().getKey(),
-              c.element().getValue(),
-              context.toString());
-          numberOfRequests.inc();
-           String key = String.format("%s~%d", c.element().getKey(), new
-           Random().nextInt(keyRange));
-          c.output(KV.of(key, context));
-        }
+  public void processElement(ProcessContext c, RestrictionTracker<OffsetRange, Long> tracker)
+      throws IOException {
+    String fileName = c.element().getKey();
+    try (SeekableByteChannel channel = getReader(c.element().getValue())) {
+      ByteBuffer readBuffer = ByteBuffer.allocate(chunkSize);
+      ByteString buffer = ByteString.EMPTY;
+      for (long i = tracker.currentRestriction().getFrom(); tracker.tryClaim(i); ++i) {
+        long startOffset = (i * chunkSize) - chunkSize;
+        channel.position(startOffset);
+        readBuffer = ByteBuffer.allocate(chunkSize);
+        buffer = ByteString.EMPTY;
+        channel.read(readBuffer);
+        readBuffer.flip();
+        buffer = ByteString.copyFrom(readBuffer);
+        readBuffer.clear();
+        LOG.info(
+            "Current Restriction {}, Content Size{}", tracker.currentRestriction(), buffer.size());
+
+        c.output(KV.of(fileName, buffer));
       }
     }
   }
 
   @GetInitialRestriction
-  public OffsetRange getInitialRestriction(@Element KV<String, String> videoFile)
+  public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> file)
       throws IOException {
-    Double clipLength = Double.valueOf(videoFile.getValue());
-    long duration = (long) Math.rint(clipLength);
+    long totalBytes = file.getValue().getMetadata().sizeBytes();
     long totalSplit = 0;
-    if (duration < chunkSize) {
+    if (totalBytes < chunkSize) {
       totalSplit = 2;
     } else {
-      totalSplit = totalSplit + (duration / chunkSize);
-      double remaining = clipLength % chunkSize;
-      if (remaining > 0.0) {
+      totalSplit = totalSplit + (totalBytes / chunkSize);
+      long remaining = totalBytes % chunkSize;
+      if (remaining > 0) {
         totalSplit = totalSplit + 2;
       }
     }
-
     LOG.info(
-        "Total clip Duration {} seconds for File {} -Initial Restriction range from 1 to: {}",
-        clipLength,
-        videoFile.getKey(),
-        totalSplit);
+        "File Read Transform:ReadFile: Total Bytes {} for File {} -Initial Restriction range from 1 to: {}. Batch size of each chunk: {} ",
+        totalBytes,
+        file.getKey(),
+        totalSplit,
+        chunkSize);
     return new OffsetRange(1, totalSplit);
   }
 
   @SplitRestriction
   public void splitRestriction(
-      @Element KV<String, String> videoFile,
+      @Element KV<String, ReadableFile> file,
       @Restriction OffsetRange range,
       OutputReceiver<OffsetRange> out) {
     for (final OffsetRange p : range.split(1, 1)) {
@@ -112,5 +98,16 @@ public class VideoSegmentSplitDoFn extends DoFn<KV<String, String>, KV<String, V
   @NewTracker
   public OffsetRangeTracker newTracker(@Restriction OffsetRange range) {
     return new OffsetRangeTracker(new OffsetRange(range.getFrom(), range.getTo()));
+  }
+
+  private static SeekableByteChannel getReader(ReadableFile eventFile) {
+    SeekableByteChannel channel = null;
+    try {
+      channel = eventFile.openSeekable();
+    } catch (IOException e) {
+      LOG.error("Failed to Open File {}", e.getMessage());
+      throw new RuntimeException(e);
+    }
+    return channel;
   }
 }
