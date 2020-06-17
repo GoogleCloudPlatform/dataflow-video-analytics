@@ -31,11 +31,9 @@ import org.slf4j.LoggerFactory;
 public class VideoSegmentSplitDoFn extends DoFn<KV<String, ReadableFile>, KV<String, ByteString>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoSegmentSplitDoFn.class);
   private Integer chunkSize;
-  private Integer keyRange;
 
   public VideoSegmentSplitDoFn(Integer chunkSize, Integer keyRange) {
     this.chunkSize = chunkSize;
-    this.keyRange = keyRange;
   }
 
   @ProcessElement

@@ -78,6 +78,7 @@ public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     LOG.info("Json {}", c.element().toString());
+                    c.output(c.element());
                   }
                 }))
         .apply("WriteToTopic", PubsubIO.writeStrings().to(topic()));

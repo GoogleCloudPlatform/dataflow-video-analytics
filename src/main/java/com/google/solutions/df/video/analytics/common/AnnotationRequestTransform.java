@@ -71,7 +71,7 @@ public abstract class AnnotationRequestTransform
       GcsPath uri = GcsPath.fromComponents(bucket, object);
 
       if (eventType.equalsIgnoreCase(Util.ALLOWED_NOTIFICATION_EVENT_TYPE)) {
-       
+
         String path = uri.toString();
         LOG.info("File Name {}", path);
         c.output(path);

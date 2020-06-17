@@ -59,17 +59,14 @@ public class VideoAnalyticsPipeline {
                     .setSubscriber(options.getSubscriberId())
                     .build())
             .apply(
-                "SplitSegment",
+                "ChunkRequest",
                 ParDo.of(new VideoSegmentSplitDoFn(options.getChunkSize(), options.getKeyRange())));
 
     PCollection<Row> annotationResult =
         videoFilesWithContext
             .apply(
-                "AnnotateVideoRequests",
-                VideoApiTransform.newBuilder()
-                    .setFeatures(options.getFeatures())
-                    .setKeyRange(options.getKeyRange())
-                    .build())
+                "AnnotateVideo",
+                VideoApiTransform.newBuilder().setFeatures(options.getFeatures()).build())
             .setRowSchema(Util.videoMlCustomOutputSchema)
             .apply(
                 "FixedWindow",
@@ -80,7 +77,7 @@ public class VideoAnalyticsPipeline {
                     .withAllowedLateness(Duration.ZERO));
 
     annotationResult.apply(
-        "WriteResponse",
+        "WriteFilterResponse",
         ResponseWriteTransform.newBuilder()
             .setTopic(options.getTopicId())
             .setEntityList(options.getEntity())

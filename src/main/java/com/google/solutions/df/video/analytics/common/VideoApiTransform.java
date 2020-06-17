@@ -42,14 +42,10 @@ public abstract class VideoApiTransform
     extends PTransform<PCollection<KV<String, ByteString>>, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoApiTransform.class);
 
-  public abstract Integer keyRange();
-
   public abstract Feature features();
 
   @AutoValue.Builder
   public abstract static class Builder {
-    public abstract Builder setKeyRange(Integer keyRange);
-
     public abstract Builder setFeatures(Feature features);
 
     public abstract VideoApiTransform build();

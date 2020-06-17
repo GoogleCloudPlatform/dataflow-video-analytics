@@ -15,11 +15,7 @@
         "type": "FLOAT"
       },
       {
-        "name": "startTimeOffset",
-        "type": "STRING"
-      },
-      {
-        "name": "endTimeOffset",
+        "name": "transaction_time",
         "type": "STRING"
       }
     ],

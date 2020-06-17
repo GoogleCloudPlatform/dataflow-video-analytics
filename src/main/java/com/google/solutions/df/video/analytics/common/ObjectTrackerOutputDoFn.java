@@ -48,16 +48,6 @@ public class ObjectTrackerOutputDoFn extends DoFn<KV<String, StreamingAnnotateVi
               String entityDescription =
                   annotation.hasEntity() ? annotation.getEntity().getDescription() : "NOT_FOUND";
 
-              String startTimeOffset =
-                  annotation.hasSegment()
-                      ? Util.convertToSec(annotation.getSegment().getStartTimeOffset())
-                      : "NOT_FOUND";
-
-              String endTimeOffset =
-                  annotation.hasSegment()
-                      ? Util.convertToSec(annotation.getSegment().getEndTimeOffset())
-                      : "NOT_FOUND";
-
               List<Row> frameDataList = new ArrayList<Row>();
               AtomicInteger frameCounter = new AtomicInteger(0);
               annotation
@@ -84,8 +74,7 @@ public class ObjectTrackerOutputDoFn extends DoFn<KV<String, StreamingAnnotateVi
                       .addValues(
                           gcsUri,
                           Row.withSchema(Util.videoMlCustomFileDataSchema)
-                              .addValues(
-                                  entityDescription, confidence, startTimeOffset, endTimeOffset)
+                              .addValues(entityDescription, confidence, Util.getTimeStamp())
                               .build(),
                           Row.withSchema(Util.videoMlCustomFrameDataSchema)
                               .addArray(frameDataList)

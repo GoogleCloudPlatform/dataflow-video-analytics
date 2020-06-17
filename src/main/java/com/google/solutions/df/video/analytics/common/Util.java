@@ -28,11 +28,17 @@ import com.google.protobuf.util.JsonFormat;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
+import org.joda.time.DateTimeZone;
+import org.joda.time.Instant;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Util {
   public static final Logger LOG = LoggerFactory.getLogger(Util.class);
+  private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+      DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
   public static Gson gson = new Gson();
   public static long timeout = 120;
   public static final String ALLOWED_NOTIFICATION_EVENT_TYPE = String.valueOf("OBJECT_FINALIZE");
@@ -55,8 +61,7 @@ public class Util {
       Stream.of(
               Schema.Field.of("entity", FieldType.STRING).withNullable(true),
               Schema.Field.of("confidence", FieldType.DOUBLE).withNullable(true),
-              Schema.Field.of("startTimeOffset", FieldType.STRING).withNullable(true),
-              Schema.Field.of("endTimeOffset", FieldType.STRING).withNullable(true))
+              Schema.Field.of("transaction_time", FieldType.STRING).withNullable(true))
           .collect(toSchema());
 
   public static final Schema videoMlCustomFrameDataSchema =
@@ -87,5 +92,9 @@ public class Util {
 
     Double millis = value * 1000;
     return Duration.newBuilder().setSeconds(millis.longValue()).build();
+  }
+
+  public static String getTimeStamp() {
+    return TIMESTAMP_FORMATTER.print(Instant.now().toDateTime(DateTimeZone.UTC));
   }
 }
