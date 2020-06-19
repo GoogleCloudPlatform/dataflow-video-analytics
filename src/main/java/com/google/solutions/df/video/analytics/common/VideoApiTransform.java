@@ -21,7 +21,6 @@ import com.google.cloud.videointelligence.v1.Feature;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoRequest;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoResponse;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingFeature;
-import com.google.cloud.videointelligence.v1p3beta1.StreamingLabelDetectionConfig;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingObjectTrackingConfig;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoConfig;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoIntelligenceServiceClient;
@@ -68,41 +67,37 @@ public abstract class VideoApiTransform
       extends DoFn<KV<String, ByteString>, KV<String, StreamingAnnotateVideoResponse>> {
     private final Counter numberOfRequests =
         Metrics.counter(VideoApiTransform.class, "numberOfRequests");
-
     private StreamingVideoConfig streamingVideoConfig;
-    private StreamingVideoIntelligenceServiceClient client;
-    BidiStream<StreamingAnnotateVideoRequest, StreamingAnnotateVideoResponse> call;
-
+    BidiStream<StreamingAnnotateVideoRequest, StreamingAnnotateVideoResponse> streamCall;
+  //[START loadSnippet_2]
     @Setup
     public void setup() throws IOException {
-      
+      StreamingObjectTrackingConfig objectTrackingConfig =
+          StreamingObjectTrackingConfig.newBuilder().build();
+      streamingVideoConfig =
+          StreamingVideoConfig.newBuilder()
+              .setFeature(StreamingFeature.STREAMING_OBJECT_TRACKING)
+              .setObjectTrackingConfig(objectTrackingConfig)
+              .build();
     }
-
     @ProcessElement
     public void processElement(ProcessContext c) throws IOException {
       String fileName = c.element().getKey();
       ByteString data = c.element().getValue();
-
       try (StreamingVideoIntelligenceServiceClient client =
           StreamingVideoIntelligenceServiceClient.create()) {
-        StreamingObjectTrackingConfig objectTrackingConfig =
-            StreamingObjectTrackingConfig.newBuilder().build();
-        StreamingVideoConfig streamingVideoConfig =
-            StreamingVideoConfig.newBuilder()
-                .setFeature(StreamingFeature.STREAMING_OBJECT_TRACKING)
-                .setObjectTrackingConfig(objectTrackingConfig)
-                .build();
-        call = client.streamingAnnotateVideoCallable().call();
-        call.send(
+        streamCall = client.streamingAnnotateVideoCallable().call();
+        streamCall.send(
             StreamingAnnotateVideoRequest.newBuilder()
                 .setVideoConfig(streamingVideoConfig)
                 .build());
-        call.send(StreamingAnnotateVideoRequest.newBuilder().setInputContent(data).build());
+        streamCall.send(StreamingAnnotateVideoRequest.newBuilder().setInputContent(data).build());
+      //[END loadSnippet_2]
         numberOfRequests.inc();
-        call.closeSend();
-        for (StreamingAnnotateVideoResponse response : call) {
+        streamCall.closeSend();
+        for (StreamingAnnotateVideoResponse response : streamCall) {
           c.output(KV.of(fileName, response));
-        }
+        }      
       }
     }
   }

@@ -143,7 +143,7 @@ EOF
 
 ### Test
 1.  Validate the pipeline is running from the Dataflow console
- ![ref_arch](diagram/video_dag.png)
+ ![ref_arch](diagram/video_dag_df.png)
  
 2. Enable GCS metadata notification for the PubSub and copy sample data to your bucket. 
 

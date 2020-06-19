@@ -50,6 +50,7 @@ public class ObjectTrackerOutputDoFn extends DoFn<KV<String, StreamingAnnotateVi
 
               List<Row> frameDataList = new ArrayList<Row>();
               AtomicInteger frameCounter = new AtomicInteger(0);
+            //[START loadSnippet_3]
               annotation
                   .getFramesList()
                   .forEach(
@@ -80,6 +81,7 @@ public class ObjectTrackerOutputDoFn extends DoFn<KV<String, StreamingAnnotateVi
                               .addArray(frameDataList)
                               .build())
                       .build();
+            //[END loadSnippet_3]
               LOG.info("Response {}", outputRow.toString());
               c.output(outputRow);
             });

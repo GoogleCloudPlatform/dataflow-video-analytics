@@ -35,7 +35,7 @@ public class VideoSegmentSplitDoFn extends DoFn<KV<String, ReadableFile>, KV<Str
   public VideoSegmentSplitDoFn(Integer chunkSize, Integer keyRange) {
     this.chunkSize = chunkSize;
   }
-
+//[START loadSnippet_1]
   @ProcessElement
   public void processElement(ProcessContext c, RestrictionTracker<OffsetRange, Long> tracker)
       throws IOException {
@@ -59,7 +59,7 @@ public class VideoSegmentSplitDoFn extends DoFn<KV<String, ReadableFile>, KV<Str
       }
     }
   }
-
+//[END loadSnippet_1]
   @GetInitialRestriction
   public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> file)
       throws IOException {

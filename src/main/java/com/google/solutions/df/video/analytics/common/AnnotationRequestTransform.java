@@ -48,7 +48,6 @@ public abstract class AnnotationRequestTransform
   public static Builder newBuilder() {
     return new AutoValue_AnnotationRequestTransform.Builder();
   }
-
   @Override
   public PCollection<KV<String, ReadableFile>> expand(PBegin input) {
     return input

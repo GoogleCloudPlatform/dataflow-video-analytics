@@ -59,6 +59,7 @@ public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>
     return new AutoValue_ResponseWriteTransform.Builder();
   }
 
+  //[START loadSnippet_4]
   @Override
   public PDone expand(PCollection<Row> input) {
 
@@ -71,6 +72,8 @@ public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>
                     ent -> entityList().stream().anyMatch(obj -> obj.equals(ent)))
                 .whereFieldName("file_data.confidence", (Double con) -> con > confidence()))
         .apply("ConvertToJson", ToJson.of())
+        //[END loadSnippet_4]
+
         .apply(
             "PrettyPrint",
             ParDo.of(
