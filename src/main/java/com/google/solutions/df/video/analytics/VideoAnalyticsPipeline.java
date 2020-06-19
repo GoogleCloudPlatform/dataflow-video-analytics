@@ -15,18 +15,26 @@
  */
 package com.google.solutions.df.video.analytics;
 
+import com.google.protobuf.ByteString;
 import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform;
 import com.google.solutions.df.video.analytics.common.BQWriteTransform;
 import com.google.solutions.df.video.analytics.common.ResponseWriteTransform;
 import com.google.solutions.df.video.analytics.common.Util;
 import com.google.solutions.df.video.analytics.common.VideoAnalyticsPipelineOptions;
 import com.google.solutions.df.video.analytics.common.VideoApiTransform;
+import com.google.solutions.df.video.analytics.common.VideoSegmentSplitDoFn;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,25 +52,32 @@ public class VideoAnalyticsPipeline {
 
   public static PipelineResult run(VideoAnalyticsPipelineOptions options) {
     Pipeline p = Pipeline.create(options);
-    PCollection<String> videoFilesWithContext =
+    PCollection<KV<String, ByteString>> videoFilesWithContext =
         p.apply(
-            "TransformInputRequest",
-            AnnotationRequestTransform.newBuilder()
-                .setSubscriber(options.getSubscriberId())
-                .build());
+                "TransformInputRequest",
+                AnnotationRequestTransform.newBuilder()
+                    .setSubscriber(options.getSubscriberId())
+                    .build())
+            .apply(
+                "ChunkRequest",
+                ParDo.of(new VideoSegmentSplitDoFn(options.getChunkSize(), options.getKeyRange())));
+
     PCollection<Row> annotationResult =
         videoFilesWithContext
             .apply(
-                "AnnotateVideoRequests",
-                VideoApiTransform.newBuilder()
-                    .setFeatures(options.getFeatures())
-                    .setKeyRange(options.getKeyRange())
-                    .setWindowInterval(options.getWindowInterval())
-                    .build())
-            .setRowSchema(Util.videoMlCustomOutputSchema);
+                "AnnotateVideo",
+                VideoApiTransform.newBuilder().setFeatures(options.getFeatures()).build())
+            .setRowSchema(Util.videoMlCustomOutputSchema)
+            .apply(
+                "FixedWindow",
+                Window.<Row>into(
+                        FixedWindows.of(Duration.standardSeconds(options.getWindowInterval())))
+                    .triggering(AfterWatermark.pastEndOfWindow())
+                    .discardingFiredPanes()
+                    .withAllowedLateness(Duration.ZERO));
 
     annotationResult.apply(
-        "WriteResponse",
+        "WriteFilterResponse",
         ResponseWriteTransform.newBuilder()
             .setTopic(options.getTopicId())
             .setEntityList(options.getEntity())

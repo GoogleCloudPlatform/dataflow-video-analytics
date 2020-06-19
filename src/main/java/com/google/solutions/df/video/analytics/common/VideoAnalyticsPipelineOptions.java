@@ -38,7 +38,7 @@ public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
   void setFeatures(Feature value);
 
   @Description("Window interval in seconds")
-  @Default.Integer(5)
+  @Default.Integer(1)
   Integer getWindowInterval();
 
   void setWindowInterval(Integer value);
@@ -64,4 +64,10 @@ public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
   String getTableSpec();
 
   void setTableSpec(String value);
+
+  @Description("Chunk Size in Seconds")
+  @Default.Integer(3)
+  Integer getChunkSize();
+
+  void setChunkSize(Integer value);
 }

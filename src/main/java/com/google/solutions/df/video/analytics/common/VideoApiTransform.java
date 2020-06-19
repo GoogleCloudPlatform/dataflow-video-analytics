@@ -15,47 +15,37 @@
  */
 package com.google.solutions.df.video.analytics.common;
 
+import com.google.api.gax.rpc.BidiStream;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.videointelligence.v1.Feature;
-import com.google.common.base.MoreObjects;
-import java.util.Collections;
-import java.util.Random;
-import org.apache.beam.sdk.extensions.ml.VideoIntelligence;
-import org.apache.beam.sdk.state.BagState;
-import org.apache.beam.sdk.state.StateSpec;
-import org.apache.beam.sdk.state.StateSpecs;
-import org.apache.beam.sdk.state.TimeDomain;
-import org.apache.beam.sdk.state.Timer;
-import org.apache.beam.sdk.state.TimerSpec;
-import org.apache.beam.sdk.state.TimerSpecs;
-import org.apache.beam.sdk.state.ValueState;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoRequest;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoResponse;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingFeature;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingObjectTrackingConfig;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoConfig;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoIntelligenceServiceClient;
+import com.google.protobuf.ByteString;
+import java.io.IOException;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class VideoApiTransform extends PTransform<PCollection<String>, PCollection<Row>> {
+public abstract class VideoApiTransform
+    extends PTransform<PCollection<KV<String, ByteString>>, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(VideoApiTransform.class);
-
-  public abstract Integer keyRange();
-
-  public abstract Integer windowInterval();
 
   public abstract Feature features();
 
   @AutoValue.Builder
   public abstract static class Builder {
-    public abstract Builder setKeyRange(Integer keyRange);
-
-    public abstract Builder setWindowInterval(Integer windowInterval);
-
     public abstract Builder setFeatures(Feature features);
 
     public abstract VideoApiTransform build();
@@ -66,63 +56,49 @@ public abstract class VideoApiTransform extends PTransform<PCollection<String>, 
   }
 
   @Override
-  public PCollection<Row> expand(PCollection<String> input) {
+  public PCollection<Row> expand(PCollection<KV<String, ByteString>> input) {
 
     return input
-        .apply("AddRandomKey", WithKeys.of(new Random().nextInt(keyRange())))
-        .apply("ProcessingTimeDelay", ParDo.of(new BatchRequest(windowInterval())))
-        .apply(
-            "AnnotateVideoFiles",
-            ParDo.of(
-                VideoIntelligence.annotateFromURI(Collections.singletonList(features()), null)))
+        .apply("StreamingObjectTracking", ParDo.of(new StreamingObjectTracking()))
         .apply("ProcessResponse", ParDo.of(new ObjectTrackerOutputDoFn()));
   }
 
-  public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
-    private Integer windowInterval;
-
-    public BatchRequest(Integer windowInterval) {
-      this.windowInterval = windowInterval;
+  public static class StreamingObjectTracking
+      extends DoFn<KV<String, ByteString>, KV<String, StreamingAnnotateVideoResponse>> {
+    private final Counter numberOfRequests =
+        Metrics.counter(VideoApiTransform.class, "numberOfRequests");
+    private StreamingVideoConfig streamingVideoConfig;
+    BidiStream<StreamingAnnotateVideoRequest, StreamingAnnotateVideoResponse> streamCall;
+  //[START loadSnippet_2]
+    @Setup
+    public void setup() throws IOException {
+      StreamingObjectTrackingConfig objectTrackingConfig =
+          StreamingObjectTrackingConfig.newBuilder().build();
+      streamingVideoConfig =
+          StreamingVideoConfig.newBuilder()
+              .setFeature(StreamingFeature.STREAMING_OBJECT_TRACKING)
+              .setObjectTrackingConfig(objectTrackingConfig)
+              .build();
     }
-
-    @StateId("elementsBag")
-    private final StateSpec<BagState<String>> elementsBag = StateSpecs.bag();
-
-    @TimerId("eventTimer")
-    private final TimerSpec timer = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
-
-    @StateId("isTimerSet")
-    private final StateSpec<ValueState<Boolean>> isTimerSet = StateSpecs.value();
-
     @ProcessElement
-    public void process(
-        @Element KV<Integer, String> element,
-        @StateId("elementsBag") BagState<String> elementsBag,
-        @StateId("isTimerSet") ValueState<Boolean> isTimerSetState,
-        @TimerId("eventTimer") Timer eventTimer) {
-      elementsBag.add(element.getValue());
-      if (!MoreObjects.firstNonNull(isTimerSetState.read(), false)) {
-        eventTimer.offset(Duration.standardSeconds(windowInterval)).setRelative();
-        isTimerSetState.write(true);
+    public void processElement(ProcessContext c) throws IOException {
+      String fileName = c.element().getKey();
+      ByteString data = c.element().getValue();
+      try (StreamingVideoIntelligenceServiceClient client =
+          StreamingVideoIntelligenceServiceClient.create()) {
+        streamCall = client.streamingAnnotateVideoCallable().call();
+        streamCall.send(
+            StreamingAnnotateVideoRequest.newBuilder()
+                .setVideoConfig(streamingVideoConfig)
+                .build());
+        streamCall.send(StreamingAnnotateVideoRequest.newBuilder().setInputContent(data).build());
+      //[END loadSnippet_2]
+        numberOfRequests.inc();
+        streamCall.closeSend();
+        for (StreamingAnnotateVideoResponse response : streamCall) {
+          c.output(KV.of(fileName, response));
+        }      
       }
-    }
-
-    @OnTimer("eventTimer")
-    public void onTimer(
-        @StateId("elementsBag") BagState<String> elementsBag,
-        OutputReceiver<String> output,
-        @StateId("isTimerSet") ValueState<Boolean> isTimerSetState) {
-
-      elementsBag
-          .read()
-          .forEach(
-              file -> {
-                output.output(file);
-                LOG.info("Timer Triggered for file {}", file);
-              });
-
-      elementsBag.clear();
-      isTimerSetState.clear();
     }
   }
 }
