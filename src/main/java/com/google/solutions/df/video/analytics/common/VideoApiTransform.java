@@ -22,6 +22,7 @@ import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoReques
 import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoResponse;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingFeature;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingLabelDetectionConfig;
+import com.google.cloud.videointelligence.v1p3beta1.StreamingObjectTrackingConfig;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoConfig;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoIntelligenceServiceClient;
 import com.google.protobuf.ByteString;
@@ -74,15 +75,7 @@ public abstract class VideoApiTransform
 
     @Setup
     public void setup() throws IOException {
-      //      StreamingVideoConfig streamingVideoConfig =
-      //          StreamingVideoConfig.newBuilder()
-      //              .setFeature(StreamingFeature.STREAMING_OBJECT_TRACKING)
-      //              .build();
-      //      client = StreamingVideoIntelligenceServiceClient.create();
-      //      call = client.streamingAnnotateVideoCallable().call();
-      //      call.send(
-      //
-      // StreamingAnnotateVideoRequest.newBuilder().setVideoConfig(streamingVideoConfig).build());
+      
     }
 
     @ProcessElement
@@ -92,12 +85,12 @@ public abstract class VideoApiTransform
 
       try (StreamingVideoIntelligenceServiceClient client =
           StreamingVideoIntelligenceServiceClient.create()) {
-        StreamingLabelDetectionConfig labelConfig =
-            StreamingLabelDetectionConfig.newBuilder().setStationaryCamera(false).build();
+        StreamingObjectTrackingConfig objectTrackingConfig =
+            StreamingObjectTrackingConfig.newBuilder().build();
         StreamingVideoConfig streamingVideoConfig =
             StreamingVideoConfig.newBuilder()
                 .setFeature(StreamingFeature.STREAMING_OBJECT_TRACKING)
-                .setLabelDetectionConfig(labelConfig)
+                .setObjectTrackingConfig(objectTrackingConfig)
                 .build();
         call = client.streamingAnnotateVideoCallable().call();
         call.send(
