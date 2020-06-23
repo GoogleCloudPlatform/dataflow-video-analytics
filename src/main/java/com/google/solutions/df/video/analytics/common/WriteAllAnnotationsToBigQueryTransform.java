@@ -38,7 +38,7 @@ public abstract class WriteAllAnnotationsToBigQueryTransform
 
   public abstract BigQueryIO.Write.Method method();
 
-  public abstract String tableSpec();
+  public abstract String tableReference();
 
   public static Builder newBuilder() {
     return new AutoValue_WriteAllAnnotationsToBigQueryTransform.Builder();
@@ -48,7 +48,7 @@ public abstract class WriteAllAnnotationsToBigQueryTransform
   public abstract static class Builder {
     public abstract Builder setBatchFrequency(Integer batchFrequency);
 
-    public abstract Builder setTableSpec(String tableSpec);
+    public abstract Builder setTableReference(String tableReference);
 
     public abstract Builder setMethod(BigQueryIO.Write.Method method);
 
@@ -61,7 +61,7 @@ public abstract class WriteAllAnnotationsToBigQueryTransform
       case FILE_LOADS:
         return input.apply(
             BigQueryIO.<Row>write()
-                .to(tableSpec())
+                .to(tableReference())
                 .useBeamSchema()
                 .withoutValidation()
                 .withMethod(BigQueryIO.Write.Method.FILE_LOADS)
@@ -72,7 +72,7 @@ public abstract class WriteAllAnnotationsToBigQueryTransform
       case STREAMING_INSERTS:
         return input.apply(
             BigQueryIO.<Row>write()
-                .to(tableSpec())
+                .to(tableReference())
                 .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                 .useBeamSchema()
                 .withoutValidation()
@@ -82,7 +82,7 @@ public abstract class WriteAllAnnotationsToBigQueryTransform
       default:
         return input.apply(
             BigQueryIO.<Row>write()
-                .to(tableSpec())
+                .to(tableReference())
                 .withMethod(method())
                 .useBeamSchema()
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
