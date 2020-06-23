@@ -28,38 +28,45 @@ import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class VideoSegmentSplitDoFn extends DoFn<KV<String, ReadableFile>, KV<String, ByteString>> {
-  public static final Logger LOG = LoggerFactory.getLogger(VideoSegmentSplitDoFn.class);
+/**
+ * Reads the given video file names and output chunks of video binary content. This can be used to
+ * feed video content to the streaming version of the Video Intelligence API in downstream
+ * pipelines.
+ */
+public class SplitVideoIntoChunksDoFn
+    extends DoFn<KV<String, ReadableFile>, KV<String, ByteString>> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(SplitVideoIntoChunksDoFn.class);
   private Integer chunkSize;
 
-  public VideoSegmentSplitDoFn(Integer chunkSize, Integer keyRange) {
+  public SplitVideoIntoChunksDoFn(Integer chunkSize, Integer keyRange) {
     this.chunkSize = chunkSize;
   }
-//[START loadSnippet_1]
+
+  // [START loadSnippet_1]
   @ProcessElement
   public void processElement(ProcessContext c, RestrictionTracker<OffsetRange, Long> tracker)
       throws IOException {
     String fileName = c.element().getKey();
     try (SeekableByteChannel channel = getReader(c.element().getValue())) {
-      ByteBuffer readBuffer = ByteBuffer.allocate(chunkSize);
-      ByteString buffer = ByteString.EMPTY;
+      ByteBuffer buffer;
+      ByteString chunk;
       for (long i = tracker.currentRestriction().getFrom(); tracker.tryClaim(i); ++i) {
         long startOffset = (i * chunkSize) - chunkSize;
         channel.position(startOffset);
-        readBuffer = ByteBuffer.allocate(chunkSize);
-        buffer = ByteString.EMPTY;
-        channel.read(readBuffer);
-        readBuffer.flip();
-        buffer = ByteString.copyFrom(readBuffer);
-        readBuffer.clear();
+        buffer = ByteBuffer.allocate(chunkSize);
+        channel.read(buffer);
+        buffer.flip();
+        chunk = ByteString.copyFrom(buffer);
+        buffer.clear();
         LOG.info(
-            "Current Restriction {}, Content Size{}", tracker.currentRestriction(), buffer.size());
-
-        c.output(KV.of(fileName, buffer));
+            "Current Restriction {}, Content Size{}", tracker.currentRestriction(), chunk.size());
+        c.output(KV.of(fileName, chunk));
       }
     }
   }
-//[END loadSnippet_1]
+  // [END loadSnippet_1]
+
   @GetInitialRestriction
   public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> file)
       throws IOException {

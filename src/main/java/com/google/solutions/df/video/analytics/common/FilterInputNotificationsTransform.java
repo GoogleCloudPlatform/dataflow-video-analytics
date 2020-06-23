@@ -31,51 +31,74 @@ import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Filter input PubSub messages coming from GCS upload notifications to only process the files that
+ * have a valid video file extension.
+ */
 @AutoValue
-public abstract class AnnotationRequestTransform
+public abstract class FilterInputNotificationsTransform
     extends PTransform<PBegin, PCollection<KV<String, ReadableFile>>> {
-  public static final Logger LOG = LoggerFactory.getLogger(AnnotationRequestTransform.class);
 
-  public abstract String subscriber();
+  private static final Logger LOG =
+      LoggerFactory.getLogger(FilterInputNotificationsTransform.class);
+
+  public abstract String subscriptionId();
+  // Event type sent when a new object (or a new generation of an existing object)
+  // is *successfully* created in the bucket
+  private static final String OBJECT_FINALIZE = "OBJECT_FINALIZE";
+  // Allowed image extensions supported by the Vision API
+  private static final String FILE_PATTERN = "(^.*\\.(?i)(mov|mpeg4|mp4|avi)$)";
 
   @AutoValue.Builder
   public abstract static class Builder {
-    public abstract Builder setSubscriber(String subscriberId);
+    public abstract Builder setSubscriptionId(String subscriptionId);
 
-    public abstract AnnotationRequestTransform build();
+    public abstract FilterInputNotificationsTransform build();
   }
 
   public static Builder newBuilder() {
-    return new AutoValue_AnnotationRequestTransform.Builder();
+    return new AutoValue_FilterInputNotificationsTransform.Builder();
   }
+
   @Override
   public PCollection<KV<String, ReadableFile>> expand(PBegin input) {
     return input
         .apply(
-            "ReadFileMetadata",
-            PubsubIO.readMessagesWithAttributes().fromSubscription(subscriber()))
-        .apply("ConvertToGCSUri", ParDo.of(new MapPubSubMessage()))
+            "ReadFileMetadataFromPubSubMessage",
+            PubsubIO.readMessagesWithAttributes().fromSubscription(subscriptionId()))
+        .apply("ValidateEventType", ParDo.of(new ValidateEventType()))
         .apply("FindFile", FileIO.matchAll().withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW))
         .apply(FileIO.readMatches())
-        .apply("AddFileNameAsKey", ParDo.of(new FileSourceDoFn()));
+        .apply("ValidateFileExtension", ParDo.of(new ValidateFileExtension()));
   }
 
-  public class MapPubSubMessage extends DoFn<PubsubMessage, String> {
-
+  public class ValidateEventType extends DoFn<PubsubMessage, String> {
     @ProcessElement
     public void processElement(ProcessContext c) {
       String bucket = c.element().getAttribute("bucketId");
       String object = c.element().getAttribute("objectId");
       String eventType = c.element().getAttribute("eventType");
       GcsPath uri = GcsPath.fromComponents(bucket, object);
-
-      if (eventType.equalsIgnoreCase(Util.ALLOWED_NOTIFICATION_EVENT_TYPE)) {
-
+      if (eventType != null && eventType.equalsIgnoreCase(OBJECT_FINALIZE)) {
         String path = uri.toString();
         LOG.info("File Name {}", path);
         c.output(path);
       } else {
         LOG.info("Event Type Not Supported {}", eventType);
+      }
+    }
+  }
+
+  public static class ValidateFileExtension extends DoFn<ReadableFile, KV<String, ReadableFile>> {
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      ReadableFile file = c.element();
+      String fileName = file.getMetadata().resourceId().toString();
+      if (fileName.matches(FILE_PATTERN)) {
+        c.output(KV.of(fileName, file));
+        LOG.info("File Name {}", fileName);
+      } else {
+        LOG.warn("File {} does not contain a valid extension", fileName);
       }
     }
   }

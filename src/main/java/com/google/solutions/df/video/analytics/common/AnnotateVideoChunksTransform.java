@@ -34,13 +34,13 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+/**
+ * Sends the given video chunks to the Video Intelligence API and outputs the resulting annotations.
+ */
 @AutoValue
-public abstract class VideoApiTransform
+public abstract class AnnotateVideoChunksTransform
     extends PTransform<PCollection<KV<String, ByteString>>, PCollection<Row>> {
-  public static final Logger LOG = LoggerFactory.getLogger(VideoApiTransform.class);
 
   public abstract Feature features();
 
@@ -48,28 +48,29 @@ public abstract class VideoApiTransform
   public abstract static class Builder {
     public abstract Builder setFeatures(Feature features);
 
-    public abstract VideoApiTransform build();
+    public abstract AnnotateVideoChunksTransform build();
   }
 
   public static Builder newBuilder() {
-    return new AutoValue_VideoApiTransform.Builder();
+    return new AutoValue_AnnotateVideoChunksTransform.Builder();
   }
 
   @Override
   public PCollection<Row> expand(PCollection<KV<String, ByteString>> input) {
-
     return input
         .apply("StreamingObjectTracking", ParDo.of(new StreamingObjectTracking()))
-        .apply("ProcessResponse", ParDo.of(new ObjectTrackerOutputDoFn()));
+        .apply("ProcessResponse", ParDo.of(new FormatAnnotationSchemaDoFn()));
   }
 
   public static class StreamingObjectTracking
       extends DoFn<KV<String, ByteString>, KV<String, StreamingAnnotateVideoResponse>> {
+
     private final Counter numberOfRequests =
-        Metrics.counter(VideoApiTransform.class, "numberOfRequests");
+        Metrics.counter(AnnotateVideoChunksTransform.class, "numberOfRequests");
     private StreamingVideoConfig streamingVideoConfig;
     BidiStream<StreamingAnnotateVideoRequest, StreamingAnnotateVideoResponse> streamCall;
-  //[START loadSnippet_2]
+
+    // [START loadSnippet_2]
     @Setup
     public void setup() throws IOException {
       StreamingObjectTrackingConfig objectTrackingConfig =
@@ -80,10 +81,11 @@ public abstract class VideoApiTransform
               .setObjectTrackingConfig(objectTrackingConfig)
               .build();
     }
+
     @ProcessElement
     public void processElement(ProcessContext c) throws IOException {
       String fileName = c.element().getKey();
-      ByteString data = c.element().getValue();
+      ByteString chunk = c.element().getValue();
       try (StreamingVideoIntelligenceServiceClient client =
           StreamingVideoIntelligenceServiceClient.create()) {
         streamCall = client.streamingAnnotateVideoCallable().call();
@@ -91,13 +93,13 @@ public abstract class VideoApiTransform
             StreamingAnnotateVideoRequest.newBuilder()
                 .setVideoConfig(streamingVideoConfig)
                 .build());
-        streamCall.send(StreamingAnnotateVideoRequest.newBuilder().setInputContent(data).build());
-      //[END loadSnippet_2]
+        streamCall.send(StreamingAnnotateVideoRequest.newBuilder().setInputContent(chunk).build());
+        // [END loadSnippet_2]
         numberOfRequests.inc();
         streamCall.closeSend();
         for (StreamingAnnotateVideoResponse response : streamCall) {
           c.output(KV.of(fileName, response));
-        }      
+        }
       }
     }
   }

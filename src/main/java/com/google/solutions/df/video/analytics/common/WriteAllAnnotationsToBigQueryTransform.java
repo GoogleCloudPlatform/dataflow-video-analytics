@@ -23,12 +23,14 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+/**
+ * Indiscriminately writes to BigQuery all the annotations returned by the Video Intelligence API.
+ */
 @AutoValue
-public abstract class BQWriteTransform extends PTransform<PCollection<Row>, WriteResult> {
-  private static final Logger LOG = LoggerFactory.getLogger(BQWriteTransform.class);
+public abstract class WriteAllAnnotationsToBigQueryTransform
+    extends PTransform<PCollection<Row>, WriteResult> {
+
   private static final Integer NUM_OF_SHARDS = 100;
 
   @Nullable
@@ -39,7 +41,7 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
   public abstract String tableSpec();
 
   public static Builder newBuilder() {
-    return new AutoValue_BQWriteTransform.Builder();
+    return new AutoValue_WriteAllAnnotationsToBigQueryTransform.Builder();
   }
 
   @AutoValue.Builder
@@ -50,7 +52,7 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
 
     public abstract Builder setMethod(BigQueryIO.Write.Method method);
 
-    public abstract BQWriteTransform build();
+    public abstract WriteAllAnnotationsToBigQueryTransform build();
   }
 
   @Override

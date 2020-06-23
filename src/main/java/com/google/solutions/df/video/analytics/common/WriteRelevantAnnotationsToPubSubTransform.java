@@ -16,7 +16,6 @@
 package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
-import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform.Builder;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -31,12 +30,18 @@ import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Filters through all the annotated results and outputs to PubSub only the ones that match the
+ * specified entities and confidence level.
+ */
 @AutoValue
-public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>, PDone> {
+public abstract class WriteRelevantAnnotationsToPubSubTransform
+    extends PTransform<PCollection<Row>, PDone> {
 
-  public static final Logger LOG = LoggerFactory.getLogger(ResponseWriteTransform.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(WriteRelevantAnnotationsToPubSubTransform.class);
 
-  public abstract String topic();
+  public abstract String topicId();
 
   @Nullable
   public abstract List<String> entityList();
@@ -46,33 +51,33 @@ public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>
 
   @AutoValue.Builder
   public abstract static class Builder {
-    public abstract Builder setTopic(String topic);
+    public abstract Builder setTopicId(String topic);
 
     public abstract Builder setEntityList(List<String> entityLst);
 
     public abstract Builder setConfidence(Double confidence);
 
-    public abstract ResponseWriteTransform build();
+    public abstract WriteRelevantAnnotationsToPubSubTransform build();
   }
 
   public static Builder newBuilder() {
-    return new AutoValue_ResponseWriteTransform.Builder();
+    return new AutoValue_WriteRelevantAnnotationsToPubSubTransform.Builder();
   }
 
-  //[START loadSnippet_4]
+  // [START loadSnippet_4]
   @Override
   public PDone expand(PCollection<Row> input) {
 
     return input
         .apply(
-            "FilterEntity",
+            "FilterByEntityAndConfidence",
             Filter.<Row>create()
                 .whereFieldName(
                     "file_data.entity",
-                    ent -> entityList().stream().anyMatch(obj -> obj.equals(ent)))
+                    entity -> entityList().stream().anyMatch(obj -> obj.equals(entity)))
                 .whereFieldName("file_data.confidence", (Double con) -> con > confidence()))
         .apply("ConvertToJson", ToJson.of())
-        //[END loadSnippet_4]
+        // [END loadSnippet_4]
 
         .apply(
             "PrettyPrint",
@@ -80,10 +85,10 @@ public abstract class ResponseWriteTransform extends PTransform<PCollection<Row>
                 new DoFn<String, String>() {
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    LOG.info("Json {}", c.element().toString());
+                    LOG.info("Json {}", c.element());
                     c.output(c.element());
                   }
                 }))
-        .apply("WriteToTopic", PubsubIO.writeStrings().to(topic()));
+        .apply("PublishToPubSub", PubsubIO.writeStrings().to(topicId()));
   }
 }

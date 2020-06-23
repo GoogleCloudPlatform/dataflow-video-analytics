@@ -97,7 +97,7 @@ gradle run -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPip
 -Pargs=" --topicId=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC} --runner=DataflowRunner \
 --project=${PROJECT} --autoscalingAlgorithm=THROUGHPUT_BASED --workerMachineType=n1-highmem-4 \
 --numWorkers=3 --maxNumWorkers=5 --region=${REGION} \
---subscriberId=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION} \
+--subscriptionId=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION} \
 --features=OBJECT_TRACKING --entity=window,person --windowInterval=1 \
 --keyRange=8 --tableSpec=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis \
 --confidence=0.9"
@@ -128,12 +128,12 @@ EOF
 ```
 gcloud beta dataflow flex-template run "video-object-tracking" \
 --project=${PROJECT} \
---region=us-central1 \
+--region=${REGION} \
 --template-file-gcs-location=gs://${DATAFLOW_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json \
 --parameters=<<'EOF'
 ^~^autoscalingAlgorithm="NONE"~numWorkers=5~maxNumWorkers=5 \
 ~workerMachineType=n1-highmem-4 \
-~subscriberId=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION} \
+~subscriptionId=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION} \
 ~tableSpec=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis \
 ~features=OBJECT_TRACKING~entity=window,person~windowInterval=1 \
 ~streaming=true~keyRange=8~confidence=0.9 \

@@ -16,7 +16,6 @@
 buildscript {
     ext {
         dataflowBeamVersion = '2.21.0'
-        
     }
     repositories {
         mavenCentral()
@@ -25,21 +24,17 @@ buildscript {
      		 url "https://plugins.gradle.org/m2/"
     	}
     	dependencies {
-        classpath "net.ltgt.gradle:gradle-apt-plugin:0.19"
-        classpath "gradle.plugin.com.google.cloud.tools:jib-gradle-plugin:1.4.0"
-        classpath "com.diffplug.spotless:spotless-plugin-gradle:3.24.2"
-        
-        
+            classpath "net.ltgt.gradle:gradle-apt-plugin:0.19"
+            classpath "gradle.plugin.com.google.cloud.tools:jib-gradle-plugin:1.4.0"
+            classpath "com.diffplug.spotless:spotless-plugin-gradle:3.24.2"
+        }
     }
-    	
-    }
-    
 }
 
 repositories {
    mavenCentral()
-    
 }
+
 apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'eclipse'
@@ -49,8 +44,8 @@ apply plugin: 'com.google.cloud.tools.jib'
 apply plugin: "com.diffplug.gradle.spotless"
 
 
-mainClassName = System.getProperty("mainClass")
-//mainClassName = 'com.google.solutions.df.video.analytics.VideoAnalyticsPipeline' 
+mainClassName = System.getProperty('mainClass', 'com.google.solutions.df.video.analytics.VideoAnalyticsPipeline')
+
 jib {
   from {
     image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
@@ -70,11 +65,10 @@ targetCompatibility = 1.8
 
 applicationDefaultJvmArgs = ['-Xms4g', '-Xmx16g']
 
-
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
+    options.compilerArgs += '-Xlint:-serial'
 }
-
 
 dependencies {
     compile group: 'org.apache.beam', name: 'beam-sdks-java-core', version: dataflowBeamVersion
@@ -87,18 +81,12 @@ dependencies {
     annotationProcessor "com.google.auto.value:auto-value:1.6.2"
     testCompile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
     testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.30'
-    
-	
-
 }
 
 jar {
     manifest {
         attributes ('Main-Class': mainClassName)
     }
-
-
-
 }
 
 compileJava {

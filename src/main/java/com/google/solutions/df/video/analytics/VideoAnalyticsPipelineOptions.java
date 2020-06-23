@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.solutions.df.video.analytics.common;
+package com.google.solutions.df.video.analytics;
 
 import com.google.cloud.videointelligence.v1.Feature;
 import java.util.List;
@@ -22,10 +22,11 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
-  @Description("Subscriber Id to receive message from")
-  String getSubscriberId();
 
-  void setSubscriberId(String value);
+  @Description("Subscription Id to receive message from")
+  String getSubscriptionId();
+
+  void setSubscriptionId(String value);
 
   @Description("Pub/Sub topic to publish result")
   String getTopicId();

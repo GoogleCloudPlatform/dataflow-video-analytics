@@ -16,15 +16,8 @@
 package com.google.solutions.df.video.analytics;
 
 import com.google.protobuf.ByteString;
-import com.google.solutions.df.video.analytics.common.AnnotationRequestTransform;
-import com.google.solutions.df.video.analytics.common.BQWriteTransform;
-import com.google.solutions.df.video.analytics.common.ResponseWriteTransform;
-import com.google.solutions.df.video.analytics.common.Util;
-import com.google.solutions.df.video.analytics.common.VideoAnalyticsPipelineOptions;
-import com.google.solutions.df.video.analytics.common.VideoApiTransform;
-import com.google.solutions.df.video.analytics.common.VideoSegmentSplitDoFn;
+import com.google.solutions.df.video.analytics.common.*;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -35,38 +28,36 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class VideoAnalyticsPipeline {
-  public static final Logger LOG = LoggerFactory.getLogger(VideoAnalyticsPipeline.class);
 
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     VideoAnalyticsPipelineOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(VideoAnalyticsPipelineOptions.class);
-
     run(options);
   }
 
-  public static PipelineResult run(VideoAnalyticsPipelineOptions options) {
+  private static void run(VideoAnalyticsPipelineOptions options) {
     Pipeline p = Pipeline.create(options);
     PCollection<KV<String, ByteString>> videoFilesWithContext =
         p.apply(
-                "TransformInputRequest",
-                AnnotationRequestTransform.newBuilder()
-                    .setSubscriber(options.getSubscriberId())
+                "FilterInputNotifications",
+                FilterInputNotificationsTransform.newBuilder()
+                    .setSubscriptionId(options.getSubscriptionId())
                     .build())
             .apply(
-                "ChunkRequest",
-                ParDo.of(new VideoSegmentSplitDoFn(options.getChunkSize(), options.getKeyRange())));
-
+                "SplitVideoIntoChunks",
+                ParDo.of(
+                    new SplitVideoIntoChunksDoFn(options.getChunkSize(), options.getKeyRange())));
     PCollection<Row> annotationResult =
         videoFilesWithContext
             .apply(
-                "AnnotateVideo",
-                VideoApiTransform.newBuilder().setFeatures(options.getFeatures()).build())
+                "AnnotateVideoChunks",
+                AnnotateVideoChunksTransform.newBuilder()
+                    .setFeatures(options.getFeatures())
+                    .build())
             .setRowSchema(Util.videoMlCustomOutputSchema)
             .apply(
                 "FixedWindow",
@@ -75,20 +66,19 @@ public class VideoAnalyticsPipeline {
                     .triggering(AfterWatermark.pastEndOfWindow())
                     .discardingFiredPanes()
                     .withAllowedLateness(Duration.ZERO));
-
     annotationResult.apply(
-        "WriteFilterResponse",
-        ResponseWriteTransform.newBuilder()
-            .setTopic(options.getTopicId())
+        "WriteRelevantAnnotationsToPubSub",
+        WriteRelevantAnnotationsToPubSubTransform.newBuilder()
+            .setTopicId(options.getTopicId())
             .setEntityList(options.getEntity())
             .setConfidence(options.getConfidence())
             .build());
     annotationResult.apply(
-        "StreamFullResponsetoBQ",
-        BQWriteTransform.newBuilder()
+        "WriteAllAnnotationsToBigQuery",
+        WriteAllAnnotationsToBigQueryTransform.newBuilder()
             .setTableSpec(options.getTableSpec())
             .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
             .build());
-    return p.run();
+    p.run();
   }
 }
