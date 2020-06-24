@@ -45,12 +45,11 @@ public class VideoAnalyticsPipeline {
         p.apply(
                 "FilterInputNotifications",
                 FilterInputNotificationsTransform.newBuilder()
-                    .setSubscriptionId(options.getSubscriptionId())
+                    .setSubscriptionId(options.getInputNotificationSubscription())
                     .build())
             .apply(
                 "SplitVideoIntoChunks",
-                ParDo.of(
-                    new SplitVideoIntoChunksDoFn(options.getChunkSize(), options.getKeyRange())));
+                ParDo.of(new SplitVideoIntoChunksDoFn(options.getChunkSize())));
     PCollection<Row> annotationResult =
         videoFilesWithContext
             .apply(
@@ -69,14 +68,14 @@ public class VideoAnalyticsPipeline {
     annotationResult.apply(
         "WriteRelevantAnnotationsToPubSub",
         WriteRelevantAnnotationsToPubSubTransform.newBuilder()
-            .setTopicId(options.getTopicId())
-            .setEntityList(options.getEntity())
-            .setConfidence(options.getConfidence())
+            .setTopicId(options.getOutputTopic())
+            .setEntityList(options.getEntities())
+            .setConfidenceThreshold(options.getConfidenceThreshold())
             .build());
     annotationResult.apply(
         "WriteAllAnnotationsToBigQuery",
         WriteAllAnnotationsToBigQueryTransform.newBuilder()
-            .setTableSpec(options.getTableSpec())
+            .setTableReference(options.getTableReference())
             .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
             .build());
     p.run();

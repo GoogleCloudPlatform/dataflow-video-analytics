@@ -23,50 +23,46 @@ import org.apache.beam.sdk.options.PipelineOptions;
 
 public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
 
-  @Description("Subscription Id to receive message from")
-  String getSubscriptionId();
+  @Description("Pub/Sub subscription ID to receive input Cloud Storage notifications from")
+  String getInputNotificationSubscription();
 
-  void setSubscriptionId(String value);
+  void setInputNotificationSubscription(String value);
 
-  @Description("Pub/Sub topic to publish result")
-  String getTopicId();
+  @Description("Pub/Sub topic ID to publish the results to")
+  String getOutputTopic();
 
-  void setTopicId(String value);
+  void setOutputTopic(String value);
 
   @Description("Features")
   Feature getFeatures();
 
   void setFeatures(Feature value);
 
-  @Description("Window interval in seconds")
+  @Description("Window time interval (in seconds) for outputting results")
   @Default.Integer(1)
   Integer getWindowInterval();
 
   void setWindowInterval(Integer value);
 
-  @Description("key range")
-  @Default.Integer(1)
-  Integer getKeyRange();
+  @Description(
+      "Comma-separated list of entity labels. Object tracking annotations must contain at least one of those labels to be considered significant and be published the output Pub/Sub topic")
+  List<String> getEntities();
 
-  void setKeyRange(Integer value);
+  void setEntities(List<String> value);
 
-  @Description("Object/Entity List to filter the response")
-  List<String> getEntity();
-
-  void setEntity(List<String> value);
-
-  @Description("confidence")
+  @Description(
+      "Minimum confidence level that the object tracking annotations must meet to be considered significant and be published the output Pub/Sub topic")
   @Default.Double(0.1)
-  Double getConfidence();
+  Double getConfidenceThreshold();
 
-  void setConfidence(Double value);
+  void setConfidenceThreshold(Double value);
 
-  @Description("BQ Table Spec")
-  String getTableSpec();
+  @Description("Reference of the output BigQuery table")
+  String getTableReference();
 
-  void setTableSpec(String value);
+  void setTableReference(String value);
 
-  @Description("Chunk Size in Seconds")
+  @Description("Chunk size (in seconds) to split the video clips into")
   @Default.Integer(3)
   Integer getChunkSize();
 

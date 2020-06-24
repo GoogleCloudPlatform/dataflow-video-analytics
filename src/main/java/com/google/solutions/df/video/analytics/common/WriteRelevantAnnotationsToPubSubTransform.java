@@ -31,8 +31,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Filters through all the annotated results and outputs to PubSub only the ones that match the
- * specified entities and confidence level.
+ * Filters through all the annotated results and outputs to PubSub only the ones that satisfy to the
+ * specified entities and confidence threshold.
  */
 @AutoValue
 public abstract class WriteRelevantAnnotationsToPubSubTransform
@@ -47,7 +47,7 @@ public abstract class WriteRelevantAnnotationsToPubSubTransform
   public abstract List<String> entityList();
 
   @Nullable
-  public abstract Double confidence();
+  public abstract Double confidenceThreshold();
 
   @AutoValue.Builder
   public abstract static class Builder {
@@ -55,7 +55,7 @@ public abstract class WriteRelevantAnnotationsToPubSubTransform
 
     public abstract Builder setEntityList(List<String> entityLst);
 
-    public abstract Builder setConfidence(Double confidence);
+    public abstract Builder setConfidenceThreshold(Double confidence);
 
     public abstract WriteRelevantAnnotationsToPubSubTransform build();
   }
@@ -75,7 +75,9 @@ public abstract class WriteRelevantAnnotationsToPubSubTransform
                 .whereFieldName(
                     "file_data.entity",
                     entity -> entityList().stream().anyMatch(obj -> obj.equals(entity)))
-                .whereFieldName("file_data.confidence", (Double con) -> con > confidence()))
+                .whereFieldName(
+                    "file_data.confidence",
+                    (Double confidence) -> confidence >= confidenceThreshold()))
         .apply("ConvertToJson", ToJson.of())
         // [END loadSnippet_4]
 

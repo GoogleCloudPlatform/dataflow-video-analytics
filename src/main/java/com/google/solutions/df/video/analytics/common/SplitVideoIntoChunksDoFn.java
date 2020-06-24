@@ -39,7 +39,7 @@ public class SplitVideoIntoChunksDoFn
   private static final Logger LOG = LoggerFactory.getLogger(SplitVideoIntoChunksDoFn.class);
   private Integer chunkSize;
 
-  public SplitVideoIntoChunksDoFn(Integer chunkSize, Integer keyRange) {
+  public SplitVideoIntoChunksDoFn(Integer chunkSize) {
     this.chunkSize = chunkSize;
   }
 
@@ -59,8 +59,7 @@ public class SplitVideoIntoChunksDoFn
         buffer.flip();
         chunk = ByteString.copyFrom(buffer);
         buffer.clear();
-        LOG.info(
-            "Current Restriction {}, Content Size{}", tracker.currentRestriction(), chunk.size());
+        LOG.info("Current Restriction {}, Content Size{}", tracker.currentRestriction(), chunk.size());
         c.output(KV.of(fileName, chunk));
       }
     }
