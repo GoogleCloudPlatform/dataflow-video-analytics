@@ -54,8 +54,7 @@ public class GroupByAnnotateResponseTransform
           Row.withSchema(Util.videoMlCustomOutputListSchema)
               .addValues(gcsUri, entity, detections)
               .build();
-      LOG.info("Output Row {}", aggrRow.toString());
-
+      LOG.debug("Output Row {}", aggrRow.toString());
       return aggrRow;
     }
   }
