@@ -22,6 +22,8 @@ import org.apache.beam.sdk.io.FileIO.ReadableFile;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -41,6 +43,9 @@ public abstract class FilterInputNotificationsTransform
 
   private static final Logger LOG =
       LoggerFactory.getLogger(FilterInputNotificationsTransform.class);
+
+  private final Counter numberOfFiles =
+      Metrics.counter(FilterInputNotificationsTransform.class, "numberOfFiles");
 
   public abstract String subscriptionId();
   // Event type sent when a new object (or a new generation of an existing object)
@@ -81,7 +86,7 @@ public abstract class FilterInputNotificationsTransform
       GcsPath uri = GcsPath.fromComponents(bucket, object);
       if (eventType != null && eventType.equalsIgnoreCase(OBJECT_FINALIZE)) {
         String path = uri.toString();
-        LOG.info("File Name {}", path);
+        numberOfFiles.inc();
         c.output(path);
       } else {
         LOG.info("Event Type Not Supported {}", eventType);
