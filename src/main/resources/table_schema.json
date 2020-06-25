@@ -5,9 +5,18 @@
     "type": "STRING"
   },
   {
+    "mode": "REQUIRED",
+    "name": "entity",
+    "type": "STRING"
+  },
+  {
     "fields": [
       {
-        "name": "entity",
+        "name": "processing_timestamp",
+        "type": "STRING"
+      },
+      {
+        "name": "timeOffset",
         "type": "STRING"
       },
       {
@@ -15,49 +24,23 @@
         "type": "FLOAT"
       },
       {
-        "name": "transaction_time",
-        "type": "STRING"
-      }
-    ],
-    "mode": "NULLABLE",
-    "name": "file_data",
-    "type": "RECORD"
-  },
-  {
-    "fields": [
+        "name": "left",
+        "type": "FLOAT"
+      },
       {
-        "fields": [
-          {
-            "name": "frame",
-            "type": "STRING"
-          },
-          {
-            "name": "x",
-            "type": "STRING"
-          },
-          {
-            "name": "y",
-            "type": "STRING"
-          },
-          {
-            "name": "w",
-            "type": "STRING"
-          },
-          {
-            "name": "h",
-            "type": "STRING"
-          },
-          {
-            "name": "timeOffset",
-            "type": "STRING"
-          }
-        ],
-        "mode": "REPEATED",
-        "name": "detections",
-        "type": "RECORD"
+        "name": "top",
+        "type": "FLOAT"
+      },
+      {
+        "name": "right",
+        "type": "FLOAT"
+      },
+      {
+        "name": "bottom",
+        "type": "FLOAT"
       }
     ],
-    "mode": "NULLABLE",
+    "mode": "REPEATED",
     "name": "frame_data",
     "type": "RECORD"
   }

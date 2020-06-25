@@ -66,9 +66,12 @@ public abstract class FilterAnnotationResponseTransform
             .whereFieldName(
                 "entity", entity -> entityList().stream().anyMatch(obj -> obj.equals(entity)))
             .whereFieldName(
-                "frame_data.confidence",
-                (Double confidence) -> confidence >= confidenceThreshold()));
-
+                "frame_data",
+                (List<Row> fd) ->
+                    fd.stream()
+                        .anyMatch(
+                            detection ->
+                                detection.getDouble("confidence") >= confidenceThreshold())));
     // [END loadSnippet_4]
 
   }
