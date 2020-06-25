@@ -45,7 +45,8 @@ public abstract class FilterInputNotificationsTransform
       LoggerFactory.getLogger(FilterInputNotificationsTransform.class);
 
   private final Counter numberOfFiles =
-	      Metrics.counter(FilterInputNotificationsTransform.class, "numberOfFiles");
+      Metrics.counter(FilterInputNotificationsTransform.class, "numberOfFiles");
+
   public abstract String subscriptionId();
   // Event type sent when a new object (or a new generation of an existing object)
   // is *successfully* created in the bucket

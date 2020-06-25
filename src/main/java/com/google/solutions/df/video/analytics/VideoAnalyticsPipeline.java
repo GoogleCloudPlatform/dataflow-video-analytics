@@ -18,7 +18,6 @@ package com.google.solutions.df.video.analytics;
 import com.google.protobuf.ByteString;
 import com.google.solutions.df.video.analytics.common.*;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
@@ -57,7 +56,7 @@ public class VideoAnalyticsPipeline {
                 AnnotateVideoChunksTransform.newBuilder()
                     .setFeatures(options.getFeatures())
                     .build())
-            .setRowSchema(Util.videoMlCustomOutputSchema)
+            .setRowSchema(Util.videoMlCustomOutputSingleRowSchema)
             .apply(
                 "FixedWindow",
                 Window.<Row>into(
@@ -72,12 +71,12 @@ public class VideoAnalyticsPipeline {
             .setEntityList(options.getEntities())
             .setConfidenceThreshold(options.getConfidenceThreshold())
             .build());
-    annotationResult.apply(
-        "WriteAllAnnotationsToBigQuery",
-        WriteAllAnnotationsToBigQueryTransform.newBuilder()
-            .setTableReference(options.getTableReference())
-            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-            .build());
+    //    annotationResult.apply(
+    //        "WriteAllAnnotationsToBigQuery",
+    //        WriteAllAnnotationsToBigQueryTransform.newBuilder()
+    //            .setTableReference(options.getTableReference())
+    //            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+    //            .build());
     p.run();
   }
 }

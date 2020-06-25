@@ -33,12 +33,12 @@ public class Util {
 
   static final Schema detectionInstanceSchema =
       Stream.of(
-              Schema.Field.of("frame", FieldType.INT32).withNullable(true),
               Schema.Field.of("timeOffset", FieldType.STRING).withNullable(true),
-              Schema.Field.of("x", FieldType.FLOAT).withNullable(true),
-              Schema.Field.of("y", FieldType.FLOAT).withNullable(true),
-              Schema.Field.of("w", FieldType.FLOAT).withNullable(true),
-              Schema.Field.of("h", FieldType.FLOAT).withNullable(true))
+              Schema.Field.of("confidence", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("left", FieldType.FLOAT).withNullable(true),
+              Schema.Field.of("top", FieldType.FLOAT).withNullable(true),
+              Schema.Field.of("right", FieldType.FLOAT).withNullable(true),
+              Schema.Field.of("bottom", FieldType.FLOAT).withNullable(true))
           .collect(toSchema());
 
   static final Schema detectedEntitySchema =
@@ -57,8 +57,17 @@ public class Util {
   public static final Schema videoMlCustomOutputSchema =
       Stream.of(
               Schema.Field.of("gcsUri", FieldType.STRING).withNullable(true),
-              Schema.Field.of("file_data", FieldType.row(detectedEntitySchema)).withNullable(true),
-              Schema.Field.of("frame_data", FieldType.row(frameSchema)).withNullable(true))
+              Schema.Field.of("entity", FieldType.STRING).withNullable(true),
+              Schema.Field.of(
+                  "frame_data", FieldType.array(FieldType.row(detectionInstanceSchema))))
+          .collect(toSchema());
+
+  public static final Schema videoMlCustomOutputSingleRowSchema =
+      Stream.of(
+              Schema.Field.of("gcsUri", FieldType.STRING).withNullable(true),
+              Schema.Field.of("entity", FieldType.STRING).withNullable(true),
+              Schema.Field.of("detection", FieldType.row(detectionInstanceSchema))
+                  .withNullable(true))
           .collect(toSchema());
 
   static String convertDurationToSeconds(Duration offset) {

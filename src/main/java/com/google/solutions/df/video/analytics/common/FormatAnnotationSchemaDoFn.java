@@ -18,9 +18,6 @@ package com.google.solutions.df.video.analytics.common;
 import com.google.cloud.videointelligence.v1p3beta1.NormalizedBoundingBox;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoResponse;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoAnnotationResults;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -53,8 +50,6 @@ public class FormatAnnotationSchemaDoFn
               double confidence = annotation.getConfidence();
               String entityDescription =
                   annotation.hasEntity() ? annotation.getEntity().getDescription() : "NOT_FOUND";
-              List<Row> framesList = new ArrayList<>();
-              AtomicInteger frameCounter = new AtomicInteger(0);
               // [START loadSnippet_3]
               annotation
                   .getFramesList()
@@ -62,30 +57,24 @@ public class FormatAnnotationSchemaDoFn
                       frame -> {
                         NormalizedBoundingBox normalizedBoundingBox =
                             frame.getNormalizedBoundingBox();
-                        String timeOffset = Util.convertDurationToSeconds(frame.getTimeOffset());
-                        framesList.add(
+                        Row frameDataOutput =
                             Row.withSchema(Util.detectionInstanceSchema)
                                 .addValues(
-                                    frameCounter.incrementAndGet(),
-                                    timeOffset,
+                                    Util.convertDurationToSeconds(frame.getTimeOffset()),
+                                    confidence,
                                     normalizedBoundingBox.getLeft(),
                                     normalizedBoundingBox.getTop(),
                                     normalizedBoundingBox.getRight(),
                                     normalizedBoundingBox.getBottom())
-                                .build());
-                      }); // end of frame loop
-              Row outputRow =
-                  Row.withSchema(Util.videoMlCustomOutputSchema)
-                      .addValues(
-                          gcsUri,
-                          Row.withSchema(Util.detectedEntitySchema)
-                              .addValues(entityDescription, confidence, Util.getCurrentTimeStamp())
-                              .build(),
-                          Row.withSchema(Util.frameSchema).addArray(framesList).build())
-                      .build();
+                                .build();
+                        Row outputRow =
+                            Row.withSchema(Util.videoMlCustomOutputSingleRowSchema)
+                                .addValues(gcsUri, entityDescription, frameDataOutput)
+                                .build();
+                        LOG.info("Formatted row {}", outputRow.toString());
+                        c.output(outputRow);
+                      });
               // [END loadSnippet_3]
-              LOG.info("Formatted row {}", outputRow.toString());
-              c.output(outputRow);
             });
   }
 }

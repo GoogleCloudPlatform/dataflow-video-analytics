@@ -16,13 +16,15 @@
 package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
+import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.schemas.transforms.Filter;
-import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.schemas.transforms.Group;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
@@ -73,24 +75,37 @@ public abstract class WriteRelevantAnnotationsToPubSubTransform
             "FilterByEntityAndConfidence",
             Filter.<Row>create()
                 .whereFieldName(
-                    "file_data.entity",
-                    entity -> entityList().stream().anyMatch(obj -> obj.equals(entity)))
+                    "entity", entity -> entityList().stream().anyMatch(obj -> obj.equals(entity)))
                 .whereFieldName(
-                    "file_data.confidence",
+                    "detection.confidence",
                     (Double confidence) -> confidence >= confidenceThreshold()))
+        .apply("GroupByFileName", Group.<Row>byFieldNames("gcsUri", "entity"))
+        .apply("MergeRow", MapElements.via(new MergeFilterResponse()))
+        .setRowSchema(Util.videoMlCustomOutputSchema)
         .apply("ConvertToJson", ToJson.of())
         // [END loadSnippet_4]
-
-        .apply(
-            "PrettyPrint",
-            ParDo.of(
-                new DoFn<String, String>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext c) {
-                    LOG.info("Json {}", c.element());
-                    c.output(c.element());
-                  }
-                }))
         .apply("PublishToPubSub", PubsubIO.writeStrings().to(topicId()));
+  }
+
+  public class MergeFilterResponse extends SimpleFunction<Row, Row> {
+    @Override
+    public Row apply(Row input) {
+
+      String gcsUri = input.getRow("key").getString("gcsUri");
+      String entity = input.getRow("key").getString("entity");
+      List<Row> detections = new ArrayList<Row>();
+      Iterable<Row> values = input.getIterable("value");
+      values.forEach(
+          v -> {
+            detections.add(v.getRow("detection"));
+          });
+      Row aggrRow =
+          Row.withSchema(Util.videoMlCustomOutputSchema)
+              .addValues(gcsUri, entity, detections)
+              .build();
+      LOG.info("Output Row {}", aggrRow.toString());
+
+      return aggrRow;
+    }
   }
 }
