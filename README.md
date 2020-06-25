@@ -134,7 +134,7 @@ EOF
 
 ### Test
 1.  Validate the pipeline is running from the Dataflow console
- ![ref_arch](diagram/video_dag_df.png)
+ ![ref_arch](diagram/video_analytics_dag.png)
  
 2. Enable GCS metadata notification for the PubSub and copy sample data to your bucket. 
 
@@ -168,13 +168,13 @@ Pipeline uses a nested table in BigQuery to store the API response and also publ
 * You can use the following query to investigate different objects and confidence level found from our kaggle dataset collected from the video clips
 
 ```
-SELECT  gcsUri, file_data.entity, max(file_data.confidence) as max_confidence 
-FROM `video_analytics.object_tracking_analysis` 
-WHERE gcsUri like '%_video_dataset%'
-GROUP by  gcsUri, file_data.entity
-ORDER by max_confidence DESC
+SELECT gcsUri, entity 
+FROM `<var>dataset-name</var>.object_tracking_analysis` 
+WHERE entity like 'person'
+GROUP by gcsUri, entity
+
 ```
- ![t4](diagram/top_entity_by_file.png). 
+ ![t4](diagram/bigquery_table.png). 
 
 *  In the test pipeline, you can see from this argument  "entities=window,person" and "confidenceThreshold=0.9" , pipeline is filtering the response that may be required  for near real time processing for downstream applications.  You can use the command below to see the publish message from the output subscription. 
 
@@ -186,73 +186,56 @@ gcloud pubsub subscriptions pull ${OBJECT_DETECTION_SUBSCRIPTION} --auto-ack --l
 * You should see json output like below:
 
 ```{
-   "gcsUri":"/drone-video-dataset/gbikes_dinosaur.mp4",
-   "file_data":{
-      "entity":"person",
-      "confidence":0.9411579370498657,
-      "startTimeOffset":"28.833333",
-      "endTimeOffset":"29.433333"
-   },
-   "frame_data":{
-      "detections":[
-         {
-            "frame":1,
-            "timeOffset":"28.833333",
-            "x":0.044736248,
-            "y":0.6212879,
-            "w":0.101860054,
-            "h":0.8296899
-         },
-         {
-            "frame":2,
-            "timeOffset":"28.933333",
-            "x":0.024250263,
-            "y":0.58061814,
-            "w":0.08128166,
-            "h":0.7889516
-         },
-         {
-            "frame":3,
-            "timeOffset":"29.033333",
-            "x":0.02043231,
-            "y":0.5591222,
-            "w":0.077463575,
-            "h":0.7674556
-         },
-         {
-            "frame":4,
-            "timeOffset":"29.133333",
-            "x":0.029356558,
-            "y":0.56631297,
-            "w":0.08638781,
-            "h":0.7746463
-         },
-         {
-            "frame":5,
-            "timeOffset":"29.233333000000002",
-            "x":0.05688007,
-            "y":0.59617907,
-            "w":0.095578365,
-            "h":0.76954556
-         },
-         {
-            "frame":6,
-            "timeOffset":"29.333333",
-            "x":0.061868794,
-            "y":0.61623406,
-            "w":0.09874276,
-            "h":0.78598607
-         },
-         {
-            "frame":7,
-            "timeOffset":"29.433333",
-            "x":0.06440044,
-            "y":0.64491415,
-            "w":0.10113216,
-            "h":0.8143843
-         }
-      ]
-   }
+   "gcsUri":"gs://drone-video-dataset/cat.mp4",
+   "entity":"cat",
+   "frame_data":[
+      {
+         "processing_timestamp":"2020-06-25 13:50:14.964000",
+         "timeOffset":"0.0",
+         "confidence":0.8674923181533813,
+         "left":0.14,
+         "top":0.22545259,
+         "right":0.74,
+         "bottom":0.86
+      },
+      {
+         "processing_timestamp":"2020-06-25 13:50:15.270000",
+         "timeOffset":"0.12",
+         "confidence":0.8674923181533813,
+         "left":0.140104,
+         "top":0.22684973,
+         "right":0.740104,
+         "bottom":0.8611095
+      },
+      {
+         "processing_timestamp":"2020-06-25 13:50:15.273000",
+         "timeOffset":"0.24",
+         "confidence":0.8674923181533813,
+         "left":0.14010431,
+         "top":0.22685367,
+         "right":0.7401043,
+         "bottom":0.861113
+      },
+      {
+         "processing_timestamp":"2020-06-25 13:50:15.275000",
+         "timeOffset":"0.36",
+         "confidence":0.8674923181533813,
+         "left":0.14010426,
+         "top":0.22762112,
+         "right":0.7401043,
+         "bottom":0.8618804
+      },
+      {
+         "processing_timestamp":"2020-06-25 13:50:15.276000",
+         "timeOffset":"0.48",
+         "confidence":0.8603168725967407,
+         "left":0.14002976,
+         "top":0.23130082,
+         "right":0.7400298,
+         "bottom":0.86003596
+      },
+  ....  
+   ]
 }
 ```
 

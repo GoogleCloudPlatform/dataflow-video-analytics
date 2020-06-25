@@ -64,14 +64,25 @@ public class VideoAnalyticsPipeline {
                         FixedWindows.of(Duration.standardSeconds(options.getWindowInterval())))
                     .triggering(AfterWatermark.pastEndOfWindow())
                     .discardingFiredPanes()
-                    .withAllowedLateness(Duration.ZERO));
-    annotationResult.apply(
-        "WriteRelevantAnnotationsToPubSub",
-        WriteRelevantAnnotationsToPubSubTransform.newBuilder()
-            .setTopicId(options.getOutputTopic())
-            .setEntityList(options.getEntities())
-            .setConfidenceThreshold(options.getConfidenceThreshold())
-            .build());
+                    .withAllowedLateness(Duration.ZERO))
+            .apply("GroupAnnotationsResponse", new GroupByAnnotateResponseTransform())
+            .setRowSchema(Util.videoMlCustomOutputListSchema);
+    // filter by entity and confidence and then group by transform
+    annotationResult
+        .apply(
+            "FilterTransform",
+            FilterAnnotationResponseTransform.newBuilder()
+                .setEntityList(options.getEntities())
+                .setConfidenceThreshold(options.getConfidenceThreshold())
+                .build())
+        .setRowSchema(Util.videoMlCustomOutputListSchema)
+        .apply(
+            "WriteRelevantAnnotationsToPubSub",
+            WriteRelevantAnnotationsToPubSubTransform.newBuilder()
+                .setTopicId(options.getOutputTopic())
+                .build());
+
+    // stream insert to BigQuery
     annotationResult.apply(
         "WriteAllAnnotationsToBigQuery",
         WriteAllAnnotationsToBigQueryTransform.newBuilder()
