@@ -18,6 +18,7 @@ package com.google.solutions.df.video.analytics;
 import com.google.protobuf.ByteString;
 import com.google.solutions.df.video.analytics.common.*;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
@@ -56,27 +57,38 @@ public class VideoAnalyticsPipeline {
                 AnnotateVideoChunksTransform.newBuilder()
                     .setFeatures(options.getFeatures())
                     .build())
-            .setRowSchema(Util.videoMlCustomOutputSingleRowSchema)
+            .setRowSchema(Util.videoMlCustomOutputSchema)
             .apply(
                 "FixedWindow",
                 Window.<Row>into(
                         FixedWindows.of(Duration.standardSeconds(options.getWindowInterval())))
                     .triggering(AfterWatermark.pastEndOfWindow())
                     .discardingFiredPanes()
-                    .withAllowedLateness(Duration.ZERO));
+                    .withAllowedLateness(Duration.ZERO))
+            .apply("GroupAnnotationsResponse", new GroupByAnnotateResponseTransform())
+            .setRowSchema(Util.videoMlCustomOutputListSchema);
+    // filter by entity and confidence and then group by transform
+    annotationResult
+        .apply(
+            "FilterTransform",
+            FilterAnnotationResponseTransform.newBuilder()
+                .setEntityList(options.getEntities())
+                .setConfidenceThreshold(options.getConfidenceThreshold())
+                .build())
+        .setRowSchema(Util.videoMlCustomOutputListSchema)
+        .apply(
+            "WriteRelevantAnnotationsToPubSub",
+            WriteRelevantAnnotationsToPubSubTransform.newBuilder()
+                .setTopicId(options.getOutputTopic())
+                .build());
+
+    // stream insert to BigQuery
     annotationResult.apply(
-        "WriteRelevantAnnotationsToPubSub",
-        WriteRelevantAnnotationsToPubSubTransform.newBuilder()
-            .setTopicId(options.getOutputTopic())
-            .setEntityList(options.getEntities())
-            .setConfidenceThreshold(options.getConfidenceThreshold())
+        "WriteAllAnnotationsToBigQuery",
+        WriteAllAnnotationsToBigQueryTransform.newBuilder()
+            .setTableReference(options.getTableReference())
+            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
             .build());
-    //    annotationResult.apply(
-    //        "WriteAllAnnotationsToBigQuery",
-    //        WriteAllAnnotationsToBigQueryTransform.newBuilder()
-    //            .setTableReference(options.getTableReference())
-    //            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-    //            .build());
     p.run();
   }
 }

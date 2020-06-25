@@ -21,6 +21,8 @@ import com.google.protobuf.Duration;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
+import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
@@ -30,9 +32,12 @@ public class Util {
 
   private static final DateTimeFormatter TIMESTAMP_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+  public static TupleTag<Row> allRows = new TupleTag<Row>() {};
+  public static TupleTag<Row> filteredRows = new TupleTag<Row>() {};
 
   static final Schema detectionInstanceSchema =
       Stream.of(
+              Schema.Field.of("processing_timestamp", FieldType.STRING).withNullable(true),
               Schema.Field.of("timeOffset", FieldType.STRING).withNullable(true),
               Schema.Field.of("confidence", FieldType.DOUBLE).withNullable(true),
               Schema.Field.of("left", FieldType.FLOAT).withNullable(true),
@@ -41,20 +46,7 @@ public class Util {
               Schema.Field.of("bottom", FieldType.FLOAT).withNullable(true))
           .collect(toSchema());
 
-  static final Schema detectedEntitySchema =
-      Stream.of(
-              Schema.Field.of("entity", FieldType.STRING).withNullable(true),
-              Schema.Field.of("confidence", FieldType.DOUBLE).withNullable(true),
-              Schema.Field.of("transaction_time", FieldType.STRING).withNullable(true))
-          .collect(toSchema());
-
-  static final Schema frameSchema =
-      Stream.of(
-              Schema.Field.of("detections", FieldType.array(FieldType.row(detectionInstanceSchema)))
-                  .withNullable(true))
-          .collect(toSchema());
-
-  public static final Schema videoMlCustomOutputSchema =
+  public static final Schema videoMlCustomOutputListSchema =
       Stream.of(
               Schema.Field.of("gcsUri", FieldType.STRING).withNullable(true),
               Schema.Field.of("entity", FieldType.STRING).withNullable(true),
@@ -62,7 +54,7 @@ public class Util {
                   "frame_data", FieldType.array(FieldType.row(detectionInstanceSchema))))
           .collect(toSchema());
 
-  public static final Schema videoMlCustomOutputSingleRowSchema =
+  public static final Schema videoMlCustomOutputSchema =
       Stream.of(
               Schema.Field.of("gcsUri", FieldType.STRING).withNullable(true),
               Schema.Field.of("entity", FieldType.STRING).withNullable(true),

@@ -60,6 +60,7 @@ public class FormatAnnotationSchemaDoFn
                         Row frameDataOutput =
                             Row.withSchema(Util.detectionInstanceSchema)
                                 .addValues(
+                                    Util.getCurrentTimeStamp(),
                                     Util.convertDurationToSeconds(frame.getTimeOffset()),
                                     confidence,
                                     normalizedBoundingBox.getLeft(),
@@ -68,7 +69,7 @@ public class FormatAnnotationSchemaDoFn
                                     normalizedBoundingBox.getBottom())
                                 .build();
                         Row outputRow =
-                            Row.withSchema(Util.videoMlCustomOutputSingleRowSchema)
+                            Row.withSchema(Util.videoMlCustomOutputSchema)
                                 .addValues(gcsUri, entityDescription, frameDataOutput)
                                 .build();
                         LOG.info("Formatted row {}", outputRow.toString());
