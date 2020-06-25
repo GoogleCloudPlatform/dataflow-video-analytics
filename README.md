@@ -89,14 +89,13 @@ This configuration is defaulted to 1
 - filter for window and person entity with confidence greater than 90%
 
 ```
-gradle run -DmainClass=com.google.solutions.df.video.analytics.VideoAnalyticsPipeline \
--Pargs=" --outputTopic=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC} --runner=DataflowRunner \
---project=${PROJECT} --autoscalingAlgorithm=THROUGHPUT_BASED --workerMachineType=n1-highmem-4 \
---numWorkers=3 --maxNumWorkers=5 --region=${REGION} \
---inputNotificationSubscription=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION} \
---features=OBJECT_TRACKING --entities=window,person --windowInterval=1 \
---tableReference=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis \
---confidenceThreshold=0.9"
+gradle run -Pargs="
+--runner=DataflowRunner --project=${PROJECT} --region=${REGION}
+--autoscalingAlgorithm=THROUGHPUT_BASED --numWorkers=3 --maxNumWorkers=5 --workerMachineType=n1-highmem-4
+--inputNotificationSubscription=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION}
+--outputTopic=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC}
+--features=OBJECT_TRACKING --entities=cat --confidenceThreshold=0.9 --windowInterval=1 --chunkSize=5000000
+--tableReference=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis"
 ```
 
 8. Create a docker image for flex template. 
@@ -124,13 +123,12 @@ gcloud beta dataflow flex-template run "video-object-tracking" \
 --region=${REGION} \
 --template-file-gcs-location=gs://${DATAFLOW_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json \
 --parameters=<<'EOF'
-^~^autoscalingAlgorithm="NONE"~numWorkers=5~maxNumWorkers=5
-~workerMachineType=n1-highmem-4
-~inputNotificationSubscription=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION}
-~tableReference=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis
-~features=OBJECT_TRACKING~entities=window,person~windowInterval=1
-~streaming=true~confidenceThreshold=0.9
-~outputTopic=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC}
+^~^autoscalingAlgorithm="NONE"~numWorkers=5~maxNumWorkers=5~workerMachineType=n1-highmem-4
+  ~inputNotificationSubscription=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION}
+  ~outputTopic=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC}
+  ~features=OBJECT_TRACKING~entities=window,person~confidenceThreshold=0.9~windowInterval=1~chunkSize=5000000
+  ~tableReference=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis
+  ~streaming=true
 EOF
 ```
 

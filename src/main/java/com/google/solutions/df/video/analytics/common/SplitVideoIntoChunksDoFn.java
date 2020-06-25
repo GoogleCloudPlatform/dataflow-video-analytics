@@ -59,7 +59,8 @@ public class SplitVideoIntoChunksDoFn
         buffer.flip();
         chunk = ByteString.copyFrom(buffer);
         buffer.clear();
-        LOG.info("Current Restriction {}, Content Size{}", tracker.currentRestriction(), chunk.size());
+        LOG.info(
+            "Current Restriction: {}, Content Size: {}", tracker.currentRestriction(), chunk.size());
         c.output(KV.of(fileName, chunk));
       }
     }
@@ -81,7 +82,7 @@ public class SplitVideoIntoChunksDoFn
       }
     }
     LOG.info(
-        "File Read Transform:ReadFile: Total Bytes {} for File {} -Initial Restriction range from 1 to: {}. Batch size of each chunk: {} ",
+        "File Read Transform: ReadFile: Total Bytes {} for File {} -Initial Restriction range from 1 to: {}. Batch size of each chunk: {} ",
         totalBytes,
         file.getKey(),
         totalSplit,
