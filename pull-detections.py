@@ -20,19 +20,21 @@ def pull(project, subscription):
     subscriber = pubsub_v1.SubscriberClient()
     subscription_path = subscriber.subscription_path(project, subscription)
     streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
-    print("Listening for messages on {}...\n".format(subscription_path))
+    print("\nListening for messages on the Pub/Sub subscription `{}`...\n".format(subscription_path))
     with subscriber:
         streaming_pull_future.result()
 
 def callback(message):
-    data = json.loads(message.data)
-    print ("""------[ Entity detected detected ]-------
+    try:
+        data = json.loads(message.data)
+        print ("""------[ Entity detected ]-------
 Entity: {}
 File: {}
-Frame: {}
-""".format(data['file_data']['entity'], data['gcsUri'], data['frame_data']))
-
-    #message.ack()
+""".format(data['entity'], data['gcsUri']))
+    except KeyError:
+        print ("------[ Error ]-------\n{}\n".format(message.data))
+    else:
+        message.ack()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

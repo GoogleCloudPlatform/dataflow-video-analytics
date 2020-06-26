@@ -41,6 +41,8 @@ public class VideoAnalyticsPipeline {
 
   private static void run(VideoAnalyticsPipelineOptions options) {
     Pipeline p = Pipeline.create(options);
+
+    // Ingest and validate input GCS notifications
     PCollection<KV<String, ByteString>> videoFilesWithContext =
         p.apply(
                 "FilterInputNotifications",
@@ -50,6 +52,8 @@ public class VideoAnalyticsPipeline {
             .apply(
                 "SplitVideoIntoChunks",
                 ParDo.of(new SplitVideoIntoChunksDoFn(options.getChunkSize())));
+
+    // Call the Video ML API to annotate the ingested video clips
     PCollection<Row> annotationResult =
         videoFilesWithContext
             .apply(
@@ -67,11 +71,12 @@ public class VideoAnalyticsPipeline {
                     .withAllowedLateness(Duration.ZERO))
             .apply("GroupAnnotationsResponse", new GroupByAnnotateResponseTransform())
             .setRowSchema(Util.videoMlCustomOutputListSchema);
-    // filter by entity and confidence and then group by transform
+
+    // Filter annotations by relevant entities and confidence, then write to Pub/Sub output topic
     annotationResult
         .apply(
-            "FilterTransform",
-            FilterAnnotationResponseTransform.newBuilder()
+            "FilterRelevantAnnotations",
+            FilterRelevantAnnotationsTransform.newBuilder()
                 .setEntityList(options.getEntities())
                 .setConfidenceThreshold(options.getConfidenceThreshold())
                 .build())
@@ -82,7 +87,7 @@ public class VideoAnalyticsPipeline {
                 .setTopicId(options.getOutputTopic())
                 .build());
 
-    // stream insert to BigQuery
+    // Stream insert all annotations to BigQuery
     annotationResult.apply(
         "WriteAllAnnotationsToBigQuery",
         WriteAllAnnotationsToBigQueryTransform.newBuilder()

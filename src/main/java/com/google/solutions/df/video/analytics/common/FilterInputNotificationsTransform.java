@@ -101,9 +101,9 @@ public abstract class FilterInputNotificationsTransform
       String fileName = file.getMetadata().resourceId().toString();
       if (fileName.matches(FILE_PATTERN)) {
         c.output(KV.of(fileName, file));
-        LOG.info("File Name {}", fileName);
+        LOG.info("Valid filename: `{}`", fileName);
       } else {
-        LOG.warn("File {} does not contain a valid extension", fileName);
+        LOG.error("Invalid filename: `{}`", fileName);
       }
     }
   }

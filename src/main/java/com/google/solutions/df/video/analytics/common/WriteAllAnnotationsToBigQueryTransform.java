@@ -59,6 +59,7 @@ public abstract class WriteAllAnnotationsToBigQueryTransform
   public WriteResult expand(PCollection<Row> input) {
     switch (method()) {
       case FILE_LOADS:
+        assert batchFrequency() != null;
         return input.apply(
             BigQueryIO.<Row>write()
                 .to(tableReference())

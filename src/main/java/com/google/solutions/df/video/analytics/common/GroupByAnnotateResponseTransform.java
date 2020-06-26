@@ -33,19 +33,19 @@ public class GroupByAnnotateResponseTransform
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
     return input
-        .apply("GroupByFields", Group.<Row>byFieldNames("gcsUri", "entity"))
+        .apply("GroupByFields", Group.byFieldNames("gcsUri", "entity"))
         .apply("MergeRow", MapElements.via(new MergeFilterResponse()))
         .setRowSchema(Util.videoMlCustomOutputListSchema);
   }
 
-  public class MergeFilterResponse extends SimpleFunction<Row, Row> {
+  public static class MergeFilterResponse extends SimpleFunction<Row, Row> {
     @Override
     public Row apply(Row input) {
-
       String gcsUri = input.getRow("key").getString("gcsUri");
       String entity = input.getRow("key").getString("entity");
       List<Row> detections = new ArrayList<Row>();
       Iterable<Row> values = input.getIterable("value");
+      assert values != null;
       values.forEach(
           v -> {
             detections.add(v.getRow("detection"));

@@ -90,7 +90,8 @@ This configuration is defaulted to 1
 
 ```
 gradle run -Pargs="
---runner=DataflowRunner --project=${PROJECT} --region=${REGION}
+--project=${PROJECT} --region=${REGION}
+--runner=DataflowRunner --streaming --enableStreamingEngine
 --autoscalingAlgorithm=THROUGHPUT_BASED --numWorkers=3 --maxNumWorkers=5 --workerMachineType=n1-highmem-4
 --inputNotificationSubscription=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION}
 --outputTopic=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC}
@@ -169,7 +170,7 @@ Pipeline uses a nested table in BigQuery to store the API response and also publ
 
 ```
 SELECT gcsUri, entity 
-FROM `<var>dataset-name</var>.object_tracking_analysis` 
+FROM `video_analytics.object_tracking_analysis` 
 WHERE entity like 'person'
 GROUP by gcsUri, entity
 

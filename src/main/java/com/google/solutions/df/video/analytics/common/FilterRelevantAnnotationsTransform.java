@@ -17,29 +17,22 @@ package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
 import java.util.List;
-import javax.annotation.Nullable;
+import java.util.Objects;
 import org.apache.beam.sdk.schemas.transforms.Filter;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Filters through all the annotated results and outputs to PubSub only the ones that satisfy to the
  * specified entities and confidence threshold.
  */
 @AutoValue
-public abstract class FilterAnnotationResponseTransform
+public abstract class FilterRelevantAnnotationsTransform
     extends PTransform<PCollection<Row>, PCollection<Row>> {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(FilterAnnotationResponseTransform.class);
-
-  @Nullable
   public abstract List<String> entityList();
 
-  @Nullable
   public abstract Double confidenceThreshold();
 
   @AutoValue.Builder
@@ -49,11 +42,11 @@ public abstract class FilterAnnotationResponseTransform
 
     public abstract Builder setConfidenceThreshold(Double confidence);
 
-    public abstract FilterAnnotationResponseTransform build();
+    public abstract FilterRelevantAnnotationsTransform build();
   }
 
   public static Builder newBuilder() {
-    return new AutoValue_FilterAnnotationResponseTransform.Builder();
+    return new AutoValue_FilterRelevantAnnotationsTransform.Builder();
   }
 
   // [START loadSnippet_4]
@@ -71,7 +64,8 @@ public abstract class FilterAnnotationResponseTransform
                     fd.stream()
                         .anyMatch(
                             detection ->
-                                detection.getDouble("confidence") >= confidenceThreshold())));
+                                Objects.requireNonNull(detection.getDouble("confidence"))
+                                    >= confidenceThreshold())));
     // [END loadSnippet_4]
 
   }
