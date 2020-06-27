@@ -72,7 +72,7 @@ public class FormatAnnotationSchemaDoFn
                             Row.withSchema(Util.videoMlCustomOutputSchema)
                                 .addValues(gcsUri, entityDescription, frameDataOutput)
                                 .build();
-                        LOG.info("Formatted row {}", outputRow.toString());
+                        LOG.debug("Formatted row {}", outputRow.toString());
                         c.output(outputRow);
                       });
               // [END loadSnippet_3]

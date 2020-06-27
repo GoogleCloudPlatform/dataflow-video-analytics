@@ -34,6 +34,8 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sends the given video chunks to the Video Intelligence API and outputs the resulting annotations.
@@ -41,6 +43,7 @@ import org.apache.beam.sdk.values.Row;
 @AutoValue
 public abstract class AnnotateVideoChunksTransform
     extends PTransform<PCollection<KV<String, ByteString>>, PCollection<Row>> {
+	  private static final Logger LOG = LoggerFactory.getLogger(AnnotateVideoChunksTransform.class);
 
   public abstract Feature features();
 
@@ -99,7 +102,12 @@ public abstract class AnnotateVideoChunksTransform
         streamCall.closeSend();
         for (StreamingAnnotateVideoResponse response : streamCall) {
           c.output(KV.of(fileName, response));
+          if (response.hasError()) {
+              LOG.error("Error: {} {}", response.getError().getCode(), 
+            		  response.getError().getMessage());
+          }
         }
+        
       }
     }
   }
