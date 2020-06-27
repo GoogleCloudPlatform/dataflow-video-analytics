@@ -21,8 +21,6 @@ import com.google.protobuf.Duration;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
-import org.apache.beam.sdk.values.Row;
-import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
@@ -32,8 +30,6 @@ public class Util {
 
   private static final DateTimeFormatter TIMESTAMP_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
-  public static TupleTag<Row> allRows = new TupleTag<Row>() {};
-  public static TupleTag<Row> filteredRows = new TupleTag<Row>() {};
 
   static final Schema detectionInstanceSchema =
       Stream.of(

@@ -62,8 +62,8 @@ public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
 
   void setTableReference(String value);
 
-  @Description("Chunk size (in seconds) to split the video clips into")
-  @Default.Integer(3)
+  @Description("Chunk size (in bytes) to split the video clips into")
+  @Default.Integer(5000000)
   Integer getChunkSize();
 
   void setChunkSize(Integer value);

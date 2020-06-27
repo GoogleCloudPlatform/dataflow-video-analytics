@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Reads the given video file names and output chunks of video binary content. This can be used to
- * feed video content to the streaming version of the Video Intelligence API in downstream
+ * feed pieces of video content to the streaming version of the Video Intelligence API in downstream
  * pipelines.
  */
 public class SplitVideoIntoChunksDoFn
@@ -52,7 +52,7 @@ public class SplitVideoIntoChunksDoFn
       ByteBuffer buffer;
       ByteString chunk;
       for (long i = tracker.currentRestriction().getFrom(); tracker.tryClaim(i); ++i) {
-        long startOffset = (i * chunkSize) - chunkSize;
+        long startOffset = chunkSize * (i - 1);
         channel.position(startOffset);
         buffer = ByteBuffer.allocate(chunkSize);
         channel.read(buffer);
@@ -60,7 +60,10 @@ public class SplitVideoIntoChunksDoFn
         chunk = ByteString.copyFrom(buffer);
         buffer.clear();
         LOG.info(
-            "Current Restriction {}, Content Size{}", tracker.currentRestriction(), chunk.size());
+            "Current restriction: {}. Chunk size: {} bytes. File name: `{}`",
+            tracker.currentRestriction(),
+            chunk.size(),
+            fileName);
         c.output(KV.of(fileName, chunk));
       }
     }
@@ -71,23 +74,14 @@ public class SplitVideoIntoChunksDoFn
   public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> file)
       throws IOException {
     long totalBytes = file.getValue().getMetadata().sizeBytes();
-    long totalSplit = 0;
-    if (totalBytes < chunkSize) {
-      totalSplit = 2;
-    } else {
-      totalSplit = totalSplit + (totalBytes / chunkSize);
-      long remaining = totalBytes % chunkSize;
-      if (remaining > 0) {
-        totalSplit = totalSplit + 2;
-      }
-    }
+    long numChunks = 1 + totalBytes / chunkSize;
     LOG.info(
-        "File Read Transform:ReadFile: Total Bytes {} for File {} -Initial Restriction range from 1 to: {}. Batch size of each chunk: {} ",
-        totalBytes,
+        "Splitting file `{}` ({} bytes) into {} chunks of {} bytes",
         file.getKey(),
-        totalSplit,
+        totalBytes,
+        numChunks,
         chunkSize);
-    return new OffsetRange(1, totalSplit);
+    return new OffsetRange(1, 1 + numChunks);
   }
 
   @SplitRestriction
@@ -106,11 +100,11 @@ public class SplitVideoIntoChunksDoFn
   }
 
   private static SeekableByteChannel getReader(ReadableFile eventFile) {
-    SeekableByteChannel channel = null;
+    SeekableByteChannel channel;
     try {
       channel = eventFile.openSeekable();
     } catch (IOException e) {
-      LOG.error("Failed to Open File {}", e.getMessage());
+      LOG.error("Failed to open file `{}`", e.getMessage());
       throw new RuntimeException(e);
     }
     return channel;
