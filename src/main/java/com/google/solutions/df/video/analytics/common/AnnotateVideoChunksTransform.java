@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 @AutoValue
 public abstract class AnnotateVideoChunksTransform
     extends PTransform<PCollection<KV<String, ByteString>>, PCollection<Row>> {
-	  private static final Logger LOG = LoggerFactory.getLogger(AnnotateVideoChunksTransform.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AnnotateVideoChunksTransform.class);
 
   public abstract Feature features();
 
@@ -103,11 +103,11 @@ public abstract class AnnotateVideoChunksTransform
         for (StreamingAnnotateVideoResponse response : streamCall) {
           c.output(KV.of(fileName, response));
           if (response.hasError()) {
-              LOG.error("Error: {} {}", response.getError().getCode(), 
-            		  response.getError().getMessage());
+            LOG.error(
+                "Error: {} {}", response.getError().getCode(), response.getError().getMessage());
+            LOG.error("Error {}", response.getError().toString());
           }
         }
-        
       }
     }
   }

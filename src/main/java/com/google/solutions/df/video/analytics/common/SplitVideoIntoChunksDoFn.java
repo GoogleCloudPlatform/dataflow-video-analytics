@@ -59,7 +59,7 @@ public class SplitVideoIntoChunksDoFn
         buffer.flip();
         chunk = ByteString.copyFrom(buffer);
         buffer.clear();
-        LOG.info(
+        LOG.debug(
             "Current restriction: {}. Chunk size: {} bytes. File name: `{}`",
             tracker.currentRestriction(),
             chunk.size(),

@@ -18,6 +18,7 @@ package com.google.solutions.df.video.analytics.common;
 import com.google.cloud.videointelligence.v1p3beta1.NormalizedBoundingBox;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoResponse;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoAnnotationResults;
+import java.util.List;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -42,7 +43,7 @@ public class FormatAnnotationSchemaDoFn
     StreamingAnnotateVideoResponse response = c.element().getValue();
     StreamingVideoAnnotationResults results = response.getAnnotationResults();
     numberOfObjectAnnotations.inc(results.getObjectAnnotationsCount());
-    String gcsUri = c.element().getKey();
+    List<String> fileSplitDetails = Util.extractOriginalFileName(c.element().getKey());
     results
         .getObjectAnnotationsList()
         .forEach(
@@ -57,11 +58,14 @@ public class FormatAnnotationSchemaDoFn
                       frame -> {
                         NormalizedBoundingBox normalizedBoundingBox =
                             frame.getNormalizedBoundingBox();
+
                         Row frameDataOutput =
                             Row.withSchema(Util.detectionInstanceSchema)
                                 .addValues(
                                     Util.getCurrentTimeStamp(),
-                                    Util.convertDurationToSeconds(frame.getTimeOffset()),
+                                    Util.convertDurationToSeconds(
+                                        frame.getTimeOffset(),
+                                        Long.valueOf(fileSplitDetails.get(1))),
                                     confidence,
                                     normalizedBoundingBox.getLeft(),
                                     normalizedBoundingBox.getTop(),
@@ -70,7 +74,8 @@ public class FormatAnnotationSchemaDoFn
                                 .build();
                         Row outputRow =
                             Row.withSchema(Util.videoMlCustomOutputSchema)
-                                .addValues(gcsUri, entityDescription, frameDataOutput)
+                                .addValues(
+                                    fileSplitDetails.get(0), entityDescription, frameDataOutput)
                                 .build();
                         LOG.debug("Formatted row {}", outputRow.toString());
                         c.output(outputRow);
