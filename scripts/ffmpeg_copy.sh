@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
-#!/bin/bash
 for file in *.mp4
 do
 ffmpeg -i "$file" -codec:a aac  -ac 2  -ar 48k -c copy -f segment -segment_format mpegts  -segment_time 5 "${file%.*}~"%1d.mp4
