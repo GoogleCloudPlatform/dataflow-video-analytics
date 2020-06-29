@@ -37,11 +37,7 @@ public class SplitVideoIntoChunksDoFn
     extends DoFn<KV<String, ReadableFile>, KV<String, ByteString>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(SplitVideoIntoChunksDoFn.class);
-  private Integer chunkSize;
-
-  public SplitVideoIntoChunksDoFn(Integer chunkSize) {
-    this.chunkSize = chunkSize;
-  }
+  private static final Integer chunkSize = 10000000;
 
   // [START loadSnippet_1]
   @ProcessElement
@@ -74,14 +70,19 @@ public class SplitVideoIntoChunksDoFn
   public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> file)
       throws IOException {
     long totalBytes = file.getValue().getMetadata().sizeBytes();
-    long numChunks = 1 + totalBytes / chunkSize;
-    LOG.info(
+    if (totalBytes > chunkSize) {
+      LOG.warn(
+          "Consider reducing the timebased chunking in ffmpeg_copy script for file '{}'",
+          file.getValue().getMetadata().resourceId().getFilename());
+    }
+
+    LOG.debug(
         "Splitting file `{}` ({} bytes) into {} chunks of {} bytes",
         file.getKey(),
         totalBytes,
-        numChunks,
+        2,
         chunkSize);
-    return new OffsetRange(1, 1 + numChunks);
+    return new OffsetRange(1, 2);
   }
 
   @SplitRestriction

@@ -49,9 +49,7 @@ public class VideoAnalyticsPipeline {
                 FilterInputNotificationsTransform.newBuilder()
                     .setSubscriptionId(options.getInputNotificationSubscription())
                     .build())
-            .apply(
-                "SplitVideoIntoChunks",
-                ParDo.of(new SplitVideoIntoChunksDoFn(options.getChunkSize())));
+            .apply("SplitVideoIntoChunks", ParDo.of(new SplitVideoIntoChunksDoFn()));
 
     // Call the Video ML API to annotate the ingested video clips
     PCollection<Row> annotationResult =

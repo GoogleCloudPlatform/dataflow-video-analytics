@@ -84,12 +84,6 @@ dependencies {
     testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.30'
 }
 
-// Force the version of guava required by Beam
-configurations.all {
-    resolutionStrategy {
-        force 'com.google.guava:guava:25.1-jre'
-    }
-}
 
 jar {
     manifest {

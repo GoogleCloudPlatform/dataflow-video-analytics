@@ -14,6 +14,6 @@
 # limitations under the License
 for file in *.mp4
 do
-ffmpeg -i "$file" -codec:a aac  -ac 2  -ar 48k -c copy -f segment -segment_format mpegts  -segment_time 5 "${file%.*}~"%1d.mp4
+ffmpeg -i "$file" -codec:a aac  -ac 2  -ar 48k -c copy -movflags faststart -f segment -segment_format mpegts  -segment_time 5 "${file%.*}~"%1d.mp4
 done
 gsutil -m cp *~*.mp4 gs://${VIDEO_CLIPS_BUCKET}/

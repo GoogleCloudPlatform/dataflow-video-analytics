@@ -21,7 +21,6 @@ import com.google.protobuf.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.joda.time.DateTimeZone;
@@ -67,7 +66,6 @@ public class Util {
 
   static String convertDurationToSeconds(Duration offset, Long splitSeconds) {
     Long offsetValue = SPLIT_SECONDS_PARAM * splitSeconds;
-    LOG.info("Offset Value {}",offsetValue);
     return String.valueOf((offset.getSeconds() + offsetValue) + offset.getNanos() / 1e9);
   }
 
@@ -83,13 +81,12 @@ public class Util {
       String newFileName = fileNameWithSplitCharacter.split("\\~")[0];
       String fileNameWithExt = String.format("%s%s%s", newFileName, ".", ext);
       String splitCounter = fileNameWithSplitCharacter.split("\\~")[1];
-      fileMetadata.add(0,fileNameWithExt);
+      fileMetadata.add(0, fileNameWithExt);
       fileMetadata.add(1, splitCounter);
     } else {
       fileMetadata.add(0, fileName);
       fileMetadata.add(1, "0");
     }
-    LOG.info("FileMetadata {}", fileMetadata);
     return fileMetadata;
   }
 }
