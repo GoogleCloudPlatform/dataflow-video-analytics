@@ -95,7 +95,7 @@ gradle run -Pargs="
 --autoscalingAlgorithm=THROUGHPUT_BASED --numWorkers=3 --maxNumWorkers=5 --workerMachineType=n1-highmem-4
 --inputNotificationSubscription=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION}
 --outputTopic=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC}
---features=OBJECT_TRACKING --entities=cat --confidenceThreshold=0.9 --windowInterval=1 --chunkSize=5000000
+--features=OBJECT_TRACKING --entities=cat --confidenceThreshold=0.9 --windowInterval=1 
 --tableReference=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis"
 ```
 
@@ -127,7 +127,7 @@ gcloud beta dataflow flex-template run "video-object-tracking" \
 ^~^autoscalingAlgorithm="NONE"~numWorkers=5~maxNumWorkers=5~workerMachineType=n1-highmem-4
   ~inputNotificationSubscription=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION}
   ~outputTopic=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC}
-  ~features=OBJECT_TRACKING~entities=window,person~confidenceThreshold=0.9~windowInterval=1~chunkSize=5000000
+  ~features=OBJECT_TRACKING~entities=window,person~confidenceThreshold=0.9~windowInterval=1
   ~tableReference=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis
   ~streaming=true
 EOF
