@@ -20,7 +20,6 @@ import com.google.solutions.df.video.analytics.common.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -45,11 +44,10 @@ public class VideoAnalyticsPipeline {
     // Ingest and validate input GCS notifications
     PCollection<KV<String, ByteString>> videoFilesWithContext =
         p.apply(
-                "FilterInputNotifications",
-                FilterInputNotificationsTransform.newBuilder()
-                    .setSubscriptionId(options.getInputNotificationSubscription())
-                    .build())
-            .apply("SplitVideoIntoChunks", ParDo.of(new SplitVideoIntoChunksDoFn()));
+            "FilterInputNotifications",
+            FilterInputNotificationsTransform.newBuilder()
+                .setSubscriptionId(options.getInputNotificationSubscription())
+                .build());
 
     // Call the Video ML API to annotate the ingested video clips
     PCollection<Row> annotationResult =
