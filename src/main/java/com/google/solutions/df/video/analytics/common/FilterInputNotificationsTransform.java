@@ -16,6 +16,8 @@
 package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
+import com.google.protobuf.ByteString;
+import java.io.IOException;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.ReadableFile;
@@ -39,7 +41,7 @@ import org.slf4j.LoggerFactory;
  */
 @AutoValue
 public abstract class FilterInputNotificationsTransform
-    extends PTransform<PBegin, PCollection<KV<String, ReadableFile>>> {
+    extends PTransform<PBegin, PCollection<KV<String, ByteString>>> {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(FilterInputNotificationsTransform.class);
@@ -66,7 +68,7 @@ public abstract class FilterInputNotificationsTransform
   }
 
   @Override
-  public PCollection<KV<String, ReadableFile>> expand(PBegin input) {
+  public PCollection<KV<String, ByteString>> expand(PBegin input) {
     return input
         .apply(
             "ReadFileMetadataFromPubSubMessage",
@@ -74,7 +76,18 @@ public abstract class FilterInputNotificationsTransform
         .apply("ValidateEventType", ParDo.of(new ValidateEventType()))
         .apply("FindFile", FileIO.matchAll().withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW))
         .apply(FileIO.readMatches())
-        .apply("ValidateFileExtension", ParDo.of(new ValidateFileExtension()));
+        .apply("ValidateFileExtension", ParDo.of(new ValidateFileExtension()))
+        .apply("ReadFile", ParDo.of(new ReadFile()));
+  }
+
+  public class ReadFile extends DoFn<KV<String, ReadableFile>, KV<String, ByteString>> {
+    @ProcessElement
+    public void processsElement(ProcessContext c) throws IOException {
+      c.output(
+          KV.of(
+              c.element().getKey(),
+              ByteString.copyFrom(c.element().getValue().readFullyAsBytes())));
+    }
   }
 
   public class ValidateEventType extends DoFn<PubsubMessage, String> {

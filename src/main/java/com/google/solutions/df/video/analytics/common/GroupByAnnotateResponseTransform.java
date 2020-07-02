@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 public class GroupByAnnotateResponseTransform
     extends PTransform<PCollection<Row>, PCollection<Row>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByAnnotateResponseTransform.class);
-
+  // [START loadSnippet_5]
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
     return input
@@ -54,6 +54,8 @@ public class GroupByAnnotateResponseTransform
           Row.withSchema(Util.videoMlCustomOutputListSchema)
               .addValues(gcsUri, entity, detections)
               .build();
+      // [START loadSnippet_5]
+
       LOG.debug("Output Row {}", aggrRow.toString());
       return aggrRow;
     }

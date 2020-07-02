@@ -33,14 +33,25 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sends the given video chunks to the Video Intelligence API and outputs the resulting annotations.
  */
 @AutoValue
+@SuppressWarnings("serial")
 public abstract class AnnotateVideoChunksTransform
     extends PTransform<PCollection<KV<String, ByteString>>, PCollection<Row>> {
+  private static final Logger LOG = LoggerFactory.getLogger(AnnotateVideoChunksTransform.class);
+  static final TupleTag<KV<String, StreamingAnnotateVideoResponse>> apiResponseSuccessElements =
+      new TupleTag<KV<String, StreamingAnnotateVideoResponse>>() {};
+  static final TupleTag<KV<String, String>> apiResponseFailedElements =
+      new TupleTag<KV<String, String>>() {};
 
   public abstract Feature features();
 
@@ -57,9 +68,27 @@ public abstract class AnnotateVideoChunksTransform
 
   @Override
   public PCollection<Row> expand(PCollection<KV<String, ByteString>> input) {
-    return input
-        .apply("StreamingObjectTracking", ParDo.of(new StreamingObjectTracking()))
+    PCollectionTuple response =
+        input.apply(
+            "StreamingObjectTracking",
+            ParDo.of(new StreamingObjectTracking())
+                .withOutputTags(
+                    apiResponseSuccessElements, TupleTagList.of(apiResponseFailedElements)));
+    response.get(apiResponseFailedElements).apply("LogError", ParDo.of(new LogError()));
+    return response
+        .get(apiResponseSuccessElements)
         .apply("ProcessResponse", ParDo.of(new FormatAnnotationSchemaDoFn()));
+  }
+
+  public static class LogError extends DoFn<KV<String, String>, Void> {
+
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      LOG.error(
+          "Error processing response from File '{}' '{}'",
+          c.element().getKey(),
+          c.element().getValue());
+    }
   }
 
   public static class StreamingObjectTracking
@@ -83,9 +112,10 @@ public abstract class AnnotateVideoChunksTransform
     }
 
     @ProcessElement
-    public void processElement(ProcessContext c) throws IOException {
-      String fileName = c.element().getKey();
-      ByteString chunk = c.element().getValue();
+    public void processElement(@Element KV<String, ByteString> element, MultiOutputReceiver out)
+        throws IOException {
+      String fileName = element.getKey();
+      ByteString chunk = element.getValue();
       try (StreamingVideoIntelligenceServiceClient client =
           StreamingVideoIntelligenceServiceClient.create()) {
         streamCall = client.streamingAnnotateVideoCallable().call();
@@ -98,7 +128,11 @@ public abstract class AnnotateVideoChunksTransform
         numberOfRequests.inc();
         streamCall.closeSend();
         for (StreamingAnnotateVideoResponse response : streamCall) {
-          c.output(KV.of(fileName, response));
+          out.get(apiResponseSuccessElements).output(KV.of(fileName, response));
+          if (response.hasError()) {
+            out.get(apiResponseFailedElements)
+                .output(KV.of(fileName, response.getError().toString()));
+          }
         }
       }
     }
