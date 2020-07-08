@@ -48,9 +48,9 @@ import org.slf4j.LoggerFactory;
 public abstract class AnnotateVideoChunksTransform
     extends PTransform<PCollection<KV<String, ByteString>>, PCollection<Row>> {
   private static final Logger LOG = LoggerFactory.getLogger(AnnotateVideoChunksTransform.class);
-  static final TupleTag<KV<String, StreamingAnnotateVideoResponse>> apiResponseSuccessElements =
-      new TupleTag<KV<String, StreamingAnnotateVideoResponse>>() {};
-  static final TupleTag<KV<String, String>> apiResponseFailedElements =
+  private static final TupleTag<KV<String, StreamingAnnotateVideoResponse>>
+      apiResponseSuccessElements = new TupleTag<KV<String, StreamingAnnotateVideoResponse>>() {};
+  private static final TupleTag<KV<String, String>> apiResponseFailedElements =
       new TupleTag<KV<String, String>>() {};
 
   public abstract Feature features();
@@ -68,14 +68,18 @@ public abstract class AnnotateVideoChunksTransform
 
   @Override
   public PCollection<Row> expand(PCollection<KV<String, ByteString>> input) {
-    PCollectionTuple response =
+    PCollectionTuple videoApiResults =
         input.apply(
             "StreamingObjectTracking",
             ParDo.of(new StreamingObjectTracking())
                 .withOutputTags(
                     apiResponseSuccessElements, TupleTagList.of(apiResponseFailedElements)));
-    response.get(apiResponseFailedElements).apply("LogError", ParDo.of(new LogError()));
-    return response
+
+    // Fork out API call failures to a separate branch of the pipeline
+    videoApiResults.get(apiResponseFailedElements).apply("LogError", ParDo.of(new LogError()));
+
+    // Format the annotations returned by the successful API calls
+    return videoApiResults
         .get(apiResponseSuccessElements)
         .apply("ProcessResponse", ParDo.of(new FormatAnnotationSchemaDoFn()));
   }
@@ -85,7 +89,7 @@ public abstract class AnnotateVideoChunksTransform
     @ProcessElement
     public void processElement(ProcessContext c) {
       LOG.error(
-          "Error processing response from File '{}' '{}'",
+          "Error returned by the video API for the file `{}`. Error message: \"{}\"",
           c.element().getKey(),
           c.element().getValue());
     }

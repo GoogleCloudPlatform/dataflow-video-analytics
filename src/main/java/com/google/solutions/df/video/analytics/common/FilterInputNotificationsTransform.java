@@ -80,7 +80,7 @@ public abstract class FilterInputNotificationsTransform
         .apply("ReadFile", ParDo.of(new ReadFile()));
   }
 
-  public class ReadFile extends DoFn<KV<String, ReadableFile>, KV<String, ByteString>> {
+  public static class ReadFile extends DoFn<KV<String, ReadableFile>, KV<String, ByteString>> {
     @ProcessElement
     public void processsElement(ProcessContext c) throws IOException {
       c.output(

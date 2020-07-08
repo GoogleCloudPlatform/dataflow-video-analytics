@@ -18,8 +18,6 @@ package com.google.solutions.df.video.analytics.common;
 import static org.apache.beam.sdk.schemas.Schema.toSchema;
 
 import com.google.protobuf.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
@@ -35,7 +33,7 @@ public class Util {
 
   private static final DateTimeFormatter TIMESTAMP_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
-  private static final Long SPLIT_SECONDS_PARAM = Long.valueOf(5);
+  private static final Long SPLIT_SECONDS_PARAM = 5L;
 
   static final Schema detectionInstanceSchema =
       Stream.of(
@@ -65,28 +63,11 @@ public class Util {
           .collect(toSchema());
 
   static String convertDurationToSeconds(Duration offset, Long splitSeconds) {
-    Long offsetValue = SPLIT_SECONDS_PARAM * splitSeconds;
+    long offsetValue = SPLIT_SECONDS_PARAM * splitSeconds;
     return String.valueOf((offset.getSeconds() + offsetValue) + offset.getNanos() / 1e9);
   }
 
   static String getCurrentTimeStamp() {
     return TIMESTAMP_FORMATTER.print(Instant.now().toDateTime(DateTimeZone.UTC));
-  }
-
-  static List<String> extractOriginalFileName(String fileName) {
-    List<String> fileMetadata = new ArrayList<String>();
-    if (fileName.contains("~")) {
-      String ext = fileName.split("\\.")[1];
-      String fileNameWithSplitCharacter = fileName.split("\\.")[0];
-      String newFileName = fileNameWithSplitCharacter.split("\\~")[0];
-      String fileNameWithExt = String.format("%s%s%s", newFileName, ".", ext);
-      String splitCounter = fileNameWithSplitCharacter.split("\\~")[1];
-      fileMetadata.add(0, fileNameWithExt);
-      fileMetadata.add(1, splitCounter);
-    } else {
-      fileMetadata.add(0, fileName);
-      fileMetadata.add(1, "0");
-    }
-    return fileMetadata;
   }
 }

@@ -18,7 +18,7 @@ package com.google.solutions.df.video.analytics.common;
 import com.google.cloud.videointelligence.v1p3beta1.NormalizedBoundingBox;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingAnnotateVideoResponse;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoAnnotationResults;
-import java.util.List;
+import java.util.Objects;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -38,12 +38,39 @@ public class FormatAnnotationSchemaDoFn
   private final Counter numberOfObjectAnnotations =
       Metrics.counter(FormatAnnotationSchemaDoFn.class, "numberOfObjectAnnotations");
 
+  static class VideoClipSplitMetadata {
+    String baseName;
+    String splitIndex;
+  }
+
+  /**
+   * Extracts some metadata from the provided video clip's file name. It is assumed that the video
+   * clip is a time segment created by ffmpeg. e.g. for a file named "myfile~1.mp4", the returned
+   * metadata is: baseName="myfile.mp4" splitIndex="1".
+   */
+  private static VideoClipSplitMetadata extractMetadata(String fileName) {
+    VideoClipSplitMetadata metadata = new VideoClipSplitMetadata();
+    if (fileName.contains("~")) {
+      String extension = fileName.split("\\.")[1];
+      String fileNameWithSplitCharacter = fileName.split("\\.")[0];
+      String newFileName = fileNameWithSplitCharacter.split("~")[0];
+      String fileNameWithExtension = String.format("%s%s%s", newFileName, ".", extension);
+      String splitCounter = fileNameWithSplitCharacter.split("~")[1];
+      metadata.baseName = fileNameWithExtension;
+      metadata.splitIndex = splitCounter;
+    } else {
+      metadata.baseName = fileName;
+      metadata.splitIndex = "0";
+    }
+    return metadata;
+  }
+
   @ProcessElement
   public void processElement(ProcessContext c) {
     StreamingAnnotateVideoResponse response = c.element().getValue();
     StreamingVideoAnnotationResults results = response.getAnnotationResults();
     numberOfObjectAnnotations.inc(results.getObjectAnnotationsCount());
-    List<String> fileSplitDetails = Util.extractOriginalFileName(c.element().getKey());
+    VideoClipSplitMetadata metadata = extractMetadata(Objects.requireNonNull(c.element().getKey()));
     results
         .getObjectAnnotationsList()
         .forEach(
@@ -64,8 +91,7 @@ public class FormatAnnotationSchemaDoFn
                                 .addValues(
                                     Util.getCurrentTimeStamp(),
                                     Util.convertDurationToSeconds(
-                                        frame.getTimeOffset(),
-                                        Long.valueOf(fileSplitDetails.get(1))),
+                                        frame.getTimeOffset(), Long.valueOf(metadata.splitIndex)),
                                     confidence,
                                     normalizedBoundingBox.getLeft(),
                                     normalizedBoundingBox.getTop(),
@@ -74,8 +100,7 @@ public class FormatAnnotationSchemaDoFn
                                 .build();
                         Row outputRow =
                             Row.withSchema(Util.videoMlCustomOutputSchema)
-                                .addValues(
-                                    fileSplitDetails.get(0), entityDescription, frameDataOutput)
+                                .addValues(metadata.baseName, entityDescription, frameDataOutput)
                                 .build();
                         LOG.debug("Formatted row {}", outputRow.toString());
                         c.output(outputRow);

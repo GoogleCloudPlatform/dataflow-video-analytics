@@ -16,6 +16,7 @@
 package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
+import java.util.Objects;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
@@ -59,7 +60,6 @@ public abstract class WriteAllAnnotationsToBigQueryTransform
   public WriteResult expand(PCollection<Row> input) {
     switch (method()) {
       case FILE_LOADS:
-        assert batchFrequency() != null;
         return input.apply(
             BigQueryIO.<Row>write()
                 .to(tableReference())
@@ -68,7 +68,8 @@ public abstract class WriteAllAnnotationsToBigQueryTransform
                 .withMethod(BigQueryIO.Write.Method.FILE_LOADS)
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                .withTriggeringFrequency(Duration.standardMinutes(batchFrequency()))
+                .withTriggeringFrequency(
+                    Duration.standardMinutes(Objects.requireNonNull(batchFrequency())))
                 .withNumFileShards(NUM_OF_SHARDS));
       case STREAMING_INSERTS:
         return input.apply(
