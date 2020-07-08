@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
+sudo apt update
+sudo apt install ffmpeg
  // [START loadSnippet_1]
 for file in *.mp4
 do
