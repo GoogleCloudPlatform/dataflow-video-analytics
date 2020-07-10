@@ -16,6 +16,9 @@ build
 # Service account private key
 service-account.json
 
+# Video clips
+*.mp4
+
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 

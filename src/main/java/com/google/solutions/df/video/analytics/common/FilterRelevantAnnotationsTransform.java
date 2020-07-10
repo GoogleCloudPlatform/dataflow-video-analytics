@@ -38,7 +38,7 @@ public abstract class FilterRelevantAnnotationsTransform
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setEntityList(List<String> entityLst);
+    public abstract Builder setEntityList(List<String> entityList);
 
     public abstract Builder setConfidenceThreshold(Double confidence);
 

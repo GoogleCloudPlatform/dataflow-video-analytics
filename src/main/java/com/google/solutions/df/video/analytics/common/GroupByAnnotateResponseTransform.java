@@ -17,6 +17,8 @@ package com.google.solutions.df.video.analytics.common;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+
 import org.apache.beam.sdk.schemas.transforms.Group;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -43,21 +45,20 @@ public class GroupByAnnotateResponseTransform
     public Row apply(Row input) {
       String gcsUri = input.getRow("key").getString("gcsUri");
       String entity = input.getRow("key").getString("entity");
-      List<Row> detections = new ArrayList<Row>();
+      List<Row> detections = new ArrayList<>();
       Iterable<Row> values = input.getIterable("value");
-      assert values != null;
-      values.forEach(
+      Objects.requireNonNull(values).forEach(
           v -> {
             detections.add(v.getRow("detection"));
           });
-      Row aggrRow =
+      Row row =
           Row.withSchema(Util.videoMlCustomOutputListSchema)
               .addValues(gcsUri, entity, detections)
               .build();
-      // [START loadSnippet_5]
+      // [END loadSnippet_5]
 
-      LOG.debug("Output Row {}", aggrRow.toString());
-      return aggrRow;
+      LOG.debug("Output Row {}", row.toString());
+      return row;
     }
   }
 }
