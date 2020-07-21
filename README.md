@@ -187,7 +187,7 @@ gcloud pubsub subscriptions pull ${OBJECT_DETECTION_SUBSCRIPTION} --auto-ack --l
 * You should see json output like below:
 
 ```{
-   "gcsUri":"gs://drone-video-dataset/cat.mp4",
+   "file_name":"cat.mp4",
    "entity":"cat",
    "frame_data":[
       {

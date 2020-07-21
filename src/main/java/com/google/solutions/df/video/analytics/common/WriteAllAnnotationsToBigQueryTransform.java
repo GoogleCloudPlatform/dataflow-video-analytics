@@ -28,6 +28,7 @@ import org.joda.time.Duration;
 /**
  * Indiscriminately writes to BigQuery all the annotations returned by the Video Intelligence API.
  */
+@SuppressWarnings("serial")
 @AutoValue
 public abstract class WriteAllAnnotationsToBigQueryTransform
     extends PTransform<PCollection<Row>, WriteResult> {

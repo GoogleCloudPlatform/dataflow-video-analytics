@@ -18,7 +18,9 @@ package com.google.solutions.df.video.analytics.common;
 import static org.apache.beam.sdk.schemas.Schema.toSchema;
 
 import com.google.protobuf.Duration;
+import java.net.URI;
 import java.util.stream.Stream;
+import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.joda.time.DateTimeZone;
@@ -48,7 +50,7 @@ public class Util {
 
   public static final Schema videoMlCustomOutputListSchema =
       Stream.of(
-              Schema.Field.of("gcsUri", FieldType.STRING).withNullable(true),
+              Schema.Field.of("file_name", FieldType.STRING).withNullable(true),
               Schema.Field.of("entity", FieldType.STRING).withNullable(true),
               Schema.Field.of(
                   "frame_data", FieldType.array(FieldType.row(detectionInstanceSchema))))
@@ -56,7 +58,7 @@ public class Util {
 
   public static final Schema videoMlCustomOutputSchema =
       Stream.of(
-              Schema.Field.of("gcsUri", FieldType.STRING).withNullable(true),
+              Schema.Field.of("file_name", FieldType.STRING).withNullable(true),
               Schema.Field.of("entity", FieldType.STRING).withNullable(true),
               Schema.Field.of("detection", FieldType.row(detectionInstanceSchema))
                   .withNullable(true))
@@ -69,5 +71,10 @@ public class Util {
 
   static String getCurrentTimeStamp() {
     return TIMESTAMP_FORMATTER.print(Instant.now().toDateTime(DateTimeZone.UTC));
+  }
+
+  static String getFileName(String gcsPath) {
+    GcsPath path = GcsPath.fromUri(URI.create(gcsPath));
+    return path.getObject();
   }
 }
