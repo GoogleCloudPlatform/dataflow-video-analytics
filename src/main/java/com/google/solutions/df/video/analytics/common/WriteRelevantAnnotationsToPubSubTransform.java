@@ -23,6 +23,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.Row;
 
+@SuppressWarnings("serial")
 @AutoValue
 public abstract class WriteRelevantAnnotationsToPubSubTransform
     extends PTransform<PCollection<Row>, PDone> {
