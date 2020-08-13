@@ -12,10 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
-# [START loadSnippet_1]
 for file in *.mp4
 do
 ffmpeg -i "$file" -codec:a aac  -ac 2  -ar 48k -c copy -movflags faststart -f segment -segment_format mpegts  -segment_time 5 "${file%.*}~"%1d.mp4
 done
 gsutil -m cp *~*.mp4 $1
-# [END loadSnippet_1]
