@@ -38,7 +38,7 @@ public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
 
   void setFeatures(Feature value);
 
-  @Description("Window time interval (in seconds) for outputting results")
+  @Description("Window time interval (in seconds) for outputing results")
   @Default.Integer(1)
   Integer getWindowInterval();
 

@@ -1,0 +1,4 @@
+{
+	"image": "gcr.io/cloud-solutions-images/video-analytics-solution:latest",
+	"sdk_info":  {"language": "JAVA"}
+}
