@@ -17,7 +17,6 @@ package com.google.solutions.df.video.analytics.common;
 
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableMap;
-
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -34,7 +33,8 @@ import org.slf4j.LoggerFactory;
 @AutoValue
 public abstract class WriteRelevantAnnotationsToPubSubTransform
     extends PTransform<PCollection<Row>, PDone> {
-	  private static final Logger LOG = LoggerFactory.getLogger(WriteRelevantAnnotationsToPubSubTransform.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(WriteRelevantAnnotationsToPubSubTransform.class);
 
   public abstract String topicId();
 
@@ -61,10 +61,10 @@ public abstract class WriteRelevantAnnotationsToPubSubTransform
 
                   @ProcessElement
                   public void processContext(ProcessContext c) {
-                   LOG.info("Json {}",c.element());
-                   c.output(new PubsubMessage(c.element().getBytes(), 
-                    		ImmutableMap.of("entity","object_tracking")
-                    ));
+                    LOG.info("Json {}", c.element());
+                    c.output(
+                        new PubsubMessage(
+                            c.element().getBytes(), ImmutableMap.of("entity", "object_tracking")));
                   }
                 }))
         .apply("PublishToPubSub", PubsubIO.writeMessages().to(topicId()));
