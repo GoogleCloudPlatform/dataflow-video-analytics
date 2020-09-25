@@ -24,8 +24,11 @@ import com.google.cloud.videointelligence.v1p3beta1.StreamingFeature;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingObjectTrackingConfig;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoConfig;
 import com.google.cloud.videointelligence.v1p3beta1.StreamingVideoIntelligenceServiceClient;
+import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -55,9 +58,13 @@ public abstract class AnnotateVideoChunksTransform
 
   public abstract Feature features();
 
+  public abstract String errorTopic();
+
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setFeatures(Feature features);
+
+    public abstract Builder setErrorTopic(String errorTopic);
 
     public abstract AnnotateVideoChunksTransform build();
   }
@@ -76,7 +83,10 @@ public abstract class AnnotateVideoChunksTransform
                     apiResponseSuccessElements, TupleTagList.of(apiResponseFailedElements)));
 
     // Fork out API call failures to a separate branch of the pipeline
-    videoApiResults.get(apiResponseFailedElements).apply("LogError", ParDo.of(new LogError()));
+    videoApiResults
+        .get(apiResponseFailedElements)
+        .apply("LogError", ParDo.of(new LogError()))
+        .apply("PublishErrorMessage", PubsubIO.writeMessages().to(errorTopic()));
 
     // Format the annotations returned by the successful API calls
     return videoApiResults
@@ -84,14 +94,23 @@ public abstract class AnnotateVideoChunksTransform
         .apply("ProcessResponse", ParDo.of(new FormatAnnotationSchemaDoFn()));
   }
 
-  public static class LogError extends DoFn<KV<String, String>, Void> {
+  public static class LogError extends DoFn<KV<String, String>, PubsubMessage> {
 
     @ProcessElement
     public void processElement(ProcessContext c) {
-      LOG.error(
-          "Error returned by the video API for the file `{}`. Error message: \"{}\"",
-          c.element().getKey(),
-          c.element().getValue());
+
+      String errorMessage =
+          String.format(
+              "%s%s%s%s",
+              "Error returned by the video API for the file ",
+              c.element().getKey(),
+              "Error message: ",
+              c.element().getValue());
+
+      LOG.error(errorMessage);
+      c.output(
+          new PubsubMessage(
+              errorMessage.getBytes(), ImmutableMap.of("file_name", c.element().getKey())));
     }
   }
 

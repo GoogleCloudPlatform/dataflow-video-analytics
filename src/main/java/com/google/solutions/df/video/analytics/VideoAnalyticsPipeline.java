@@ -56,6 +56,7 @@ public class VideoAnalyticsPipeline {
                 "AnnotateVideoChunks",
                 AnnotateVideoChunksTransform.newBuilder()
                     .setFeatures(options.getFeatures())
+                    .setErrorTopic(options.getErrorTopic())
                     .build())
             .setRowSchema(Util.videoMlCustomOutputSchema)
             .apply(

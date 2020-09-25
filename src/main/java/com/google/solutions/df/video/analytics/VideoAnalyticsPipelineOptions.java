@@ -33,6 +33,11 @@ public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
 
   void setOutputTopic(String value);
 
+  @Description("Pub/Sub topic ID to publish the error message")
+  String getErrorTopic();
+
+  void setErrorTopic(String value);
+
   @Description("Features")
   Feature getFeatures();
 
@@ -52,7 +57,7 @@ public interface VideoAnalyticsPipelineOptions extends PipelineOptions {
 
   @Description(
       "Minimum confidence level that the object tracking annotations must meet to be considered significant and be published the output Pub/Sub topic")
-  @Default.Double(0.1)
+  @Default.Double(0.5)
   Double getConfidenceThreshold();
 
   void setConfidenceThreshold(Double value);
