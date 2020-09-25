@@ -27,11 +27,14 @@ import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("serial")
 @AutoValue
 public abstract class WriteRelevantAnnotationsToPubSubTransform
     extends PTransform<PCollection<Row>, PDone> {
+	  private static final Logger LOG = LoggerFactory.getLogger(WriteRelevantAnnotationsToPubSubTransform.class);
 
   public abstract String topicId();
 
@@ -58,7 +61,8 @@ public abstract class WriteRelevantAnnotationsToPubSubTransform
 
                   @ProcessElement
                   public void processContext(ProcessContext c) {
-                    c.output(new PubsubMessage(c.element().getBytes(), 
+                   LOG.info("Json {}",c.element());
+                   c.output(new PubsubMessage(c.element().getBytes(), 
                     		ImmutableMap.of("entity","object_tracking")
                     ));
                   }

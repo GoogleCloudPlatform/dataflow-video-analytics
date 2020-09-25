@@ -24,6 +24,8 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Indiscriminately writes to BigQuery all the annotations returned by the Video Intelligence API.
@@ -32,6 +34,7 @@ import org.joda.time.Duration;
 @AutoValue
 public abstract class WriteAllAnnotationsToBigQueryTransform
     extends PTransform<PCollection<Row>, WriteResult> {
+  private static final Logger LOG = LoggerFactory.getLogger(FormatAnnotationSchemaDoFn.class);
 
   private static final Integer NUM_OF_SHARDS = 100;
 
