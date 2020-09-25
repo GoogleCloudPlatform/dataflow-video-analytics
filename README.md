@@ -56,10 +56,14 @@ export GCS_NOTIFICATION_TOPIC="gcs-notification-topic"
 export GCS_NOTIFICATION_SUBSCRIPTION="gcs-notification-subscription"
 export OBJECT_DETECTION_TOPIC="object-detection-topic"
 export OBJECT_DETECTION_SUBSCRIPTION="object-detection-subscription"
+export OBJECT_DETECTION_TOPIC="object-detection-error-topic"
+export OBJECT_DETECTION_SUBSCRIPTION="object-detection-error-subscription"
 gcloud pubsub topics create ${GCS_NOTIFICATION_TOPIC}
 gcloud pubsub subscriptions create ${GCS_NOTIFICATION_SUBSCRIPTION} --topic=${GCS_NOTIFICATION_TOPIC}
 gcloud pubsub topics create ${OBJECT_DETECTION_TOPIC}
 gcloud pubsub subscriptions create ${OBJECT_DETECTION_SUBSCRIPTION} --topic=${OBJECT_DETECTION_TOPIC}
+gcloud pubsub topics create ${ERROR_TOPIC}
+gcloud pubsub subscriptions create ${ERROR_SUBSCRIPTION} --topic=${ERROR_TOPIC}
 ```
 
 5. Create a BigQuery dataset and Table. 
@@ -95,6 +99,7 @@ gradle run -Pargs="
 --autoscalingAlgorithm=THROUGHPUT_BASED --numWorkers=3 --maxNumWorkers=5 --workerMachineType=n1-highmem-4
 --inputNotificationSubscription=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION}
 --outputTopic=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC}
+--errorTopic=projects/${PROJECT}/topics/${ERROR_TOPIC}
 --features=OBJECT_TRACKING --entities=cat --confidenceThreshold=0.9 --windowInterval=1 
 --tableReference=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis"
 ```
@@ -127,6 +132,7 @@ gcloud beta dataflow flex-template run "video-object-tracking" \
 ^~^autoscalingAlgorithm="NONE"~numWorkers=5~maxNumWorkers=5~workerMachineType=n1-highmem-4
   ~inputNotificationSubscription=projects/${PROJECT}/subscriptions/${GCS_NOTIFICATION_SUBSCRIPTION}
   ~outputTopic=projects/${PROJECT}/topics/${OBJECT_DETECTION_TOPIC}
+  ~errorTopic=projects/${PROJECT}/topics/${ERROR_TOPIC}
   ~features=OBJECT_TRACKING~entities=window,person~confidenceThreshold=0.9~windowInterval=1
   ~tableReference=${PROJECT}:${BIGQUERY_DATASET}.object_tracking_analysis
   ~streaming=true
