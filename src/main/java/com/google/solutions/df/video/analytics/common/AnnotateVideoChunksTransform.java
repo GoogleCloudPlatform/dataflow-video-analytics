@@ -154,8 +154,7 @@ public abstract class AnnotateVideoChunksTransform
                         fileName,
                         Util.getCurrentTimeStamp(),
                         response.getError().getCode(),
-                        response.getError().getMessage()
-                        )
+                        response.getError().getMessage())
                     .build();
             out.get(apiResponseFailedElements).output(errorRow);
           }
