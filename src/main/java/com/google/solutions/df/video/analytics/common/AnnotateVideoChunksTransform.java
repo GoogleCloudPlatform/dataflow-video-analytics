@@ -34,6 +34,7 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -53,8 +54,7 @@ public abstract class AnnotateVideoChunksTransform
   private static final Logger LOG = LoggerFactory.getLogger(AnnotateVideoChunksTransform.class);
   private static final TupleTag<KV<String, StreamingAnnotateVideoResponse>>
       apiResponseSuccessElements = new TupleTag<KV<String, StreamingAnnotateVideoResponse>>() {};
-  private static final TupleTag<KV<String, String>> apiResponseFailedElements =
-      new TupleTag<KV<String, String>>() {};
+  private static final TupleTag<Row> apiResponseFailedElements = new TupleTag<Row>() {};
 
   public abstract Feature features();
 
@@ -85,33 +85,27 @@ public abstract class AnnotateVideoChunksTransform
     // Fork out API call failures to a separate branch of the pipeline
     videoApiResults
         .get(apiResponseFailedElements)
-        .apply("LogError", ParDo.of(new LogError()))
+        .setRowSchema(Util.errorSchema)
+        .apply("ConvertToJson", ToJson.of())
+        .apply(
+            "ConvertToPubSubMessage",
+            ParDo.of(
+                new DoFn<String, PubsubMessage>() {
+
+                  @ProcessElement
+                  public void processContext(ProcessContext c) {
+                    LOG.error("Error {}", c.element());
+                    c.output(
+                        new PubsubMessage(
+                            c.element().getBytes(), ImmutableMap.of("error_type", "api_response")));
+                  }
+                }))
         .apply("PublishErrorMessage", PubsubIO.writeMessages().to(errorTopic()));
 
     // Format the annotations returned by the successful API calls
     return videoApiResults
         .get(apiResponseSuccessElements)
         .apply("ProcessResponse", ParDo.of(new FormatAnnotationSchemaDoFn()));
-  }
-
-  public static class LogError extends DoFn<KV<String, String>, PubsubMessage> {
-
-    @ProcessElement
-    public void processElement(ProcessContext c) {
-
-      String errorMessage =
-          String.format(
-              "%s%s%s%s",
-              "Error returned by the video API for the file ",
-              c.element().getKey(),
-              "Error message: ",
-              c.element().getValue());
-
-      LOG.error(errorMessage);
-      c.output(
-          new PubsubMessage(
-              errorMessage.getBytes(), ImmutableMap.of("file_name", c.element().getKey())));
-    }
   }
 
   public static class StreamingObjectTracking
@@ -153,8 +147,17 @@ public abstract class AnnotateVideoChunksTransform
         for (StreamingAnnotateVideoResponse response : streamCall) {
           out.get(apiResponseSuccessElements).output(KV.of(fileName, response));
           if (response.hasError()) {
-            out.get(apiResponseFailedElements)
-                .output(KV.of(fileName, response.getError().toString()));
+
+            Row errorRow =
+                Row.withSchema(Util.errorSchema)
+                    .addValues(
+                        fileName,
+                        Util.getCurrentTimeStamp(),
+                        response.getError().getCode(),
+                        response.getError().getMessage()
+                        )
+                    .build();
+            out.get(apiResponseFailedElements).output(errorRow);
           }
         }
       }

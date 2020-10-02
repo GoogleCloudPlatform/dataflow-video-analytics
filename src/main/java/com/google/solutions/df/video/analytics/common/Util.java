@@ -64,6 +64,14 @@ public class Util {
                   .withNullable(true))
           .collect(toSchema());
 
+  public static final Schema errorSchema =
+      Stream.of(
+              Schema.Field.of("file_name", FieldType.STRING).withNullable(true),
+              Schema.Field.of("transaction_timestamp", FieldType.STRING).withNullable(true),
+              Schema.Field.of("error_code", FieldType.INT32).withNullable(true),
+              Schema.Field.of("error_message", FieldType.STRING).withNullable(true))
+          .collect(toSchema());
+
   static String convertDurationToSeconds(Duration offset, Long splitSeconds) {
     long offsetValue = SPLIT_SECONDS_PARAM * splitSeconds;
     return String.valueOf((offset.getSeconds() + offsetValue) + offset.getNanos() / 1e9);
