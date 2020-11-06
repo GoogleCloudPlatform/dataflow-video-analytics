@@ -58,7 +58,7 @@ public class GroupByAnnotateResponseTransform
               .build();
       // [END loadSnippet_5]
 
-      LOG.debug("Output Row {}", row.toString());
+      LOG.info("Output Row {}", row.toString());
       return row;
     }
   }

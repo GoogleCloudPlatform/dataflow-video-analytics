@@ -38,9 +38,13 @@ public abstract class WriteRelevantAnnotationsToPubSubTransform
 
   public abstract String topicId();
 
+  public abstract ImmutableMap<String, String> attributes();
+
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setTopicId(String topic);
+
+    public abstract Builder setAttributes(ImmutableMap<String, String> attributes);
 
     public abstract WriteRelevantAnnotationsToPubSubTransform build();
   }
@@ -58,13 +62,10 @@ public abstract class WriteRelevantAnnotationsToPubSubTransform
             "ConvertToPubSubMessage",
             ParDo.of(
                 new DoFn<String, PubsubMessage>() {
-
                   @ProcessElement
                   public void processContext(ProcessContext c) {
                     LOG.info("Json {}", c.element());
-                    c.output(
-                        new PubsubMessage(
-                            c.element().getBytes(), ImmutableMap.of("entity", "object_tracking")));
+                    c.output(new PubsubMessage(c.element().getBytes(), attributes()));
                   }
                 }))
         .apply("PublishToPubSub", PubsubIO.writeMessages().to(topicId()));

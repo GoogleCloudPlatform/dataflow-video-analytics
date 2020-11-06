@@ -37,6 +37,11 @@ public class Util {
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
   private static final Long SPLIT_SECONDS_PARAM = 5L;
 
+  public static final Schema metadataSchema =
+      Stream.of(
+              Schema.Field.of("file_name", FieldType.STRING).withNullable(true),
+              Schema.Field.of("num_of_entities", FieldType.INT64).withNullable(true))
+          .collect(toSchema());
   static final Schema detectionInstanceSchema =
       Stream.of(
               Schema.Field.of("processing_timestamp", FieldType.STRING).withNullable(true),

@@ -53,20 +53,23 @@ public abstract class FilterRelevantAnnotationsTransform
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
 
-    return input.apply(
-        "FilterByEntityAndConfidence",
-        Filter.<Row>create()
-            .whereFieldName(
-                "entity", entity -> entityList().stream().anyMatch(obj -> obj.equals(entity)))
-            .whereFieldName(
-                "frame_data",
-                (List<Row> fd) ->
-                    fd.stream()
-                        .anyMatch(
-                            detection ->
-                                Objects.requireNonNull(detection.getDouble("confidence"))
-                                    >= confidenceThreshold())));
+    PCollection<Row> filterRows =
+        input.apply(
+            "FilterByEntityAndConfidence",
+            Filter.<Row>create()
+                .whereFieldName(
+                    "entity", entity -> entityList().stream().anyMatch(obj -> obj.equals(entity)))
+                .whereFieldName(
+                    "frame_data",
+                    (List<Row> fd) ->
+                        fd.stream()
+                            .anyMatch(
+                                detection ->
+                                    Objects.requireNonNull(detection.getDouble("confidence"))
+                                        >= confidenceThreshold())));
     // [END loadSnippet_4]
+    // count the number of entities for metadata
 
+    return filterRows;
   }
 }

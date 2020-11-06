@@ -15,11 +15,15 @@
  */
 package com.google.solutions.df.video.analytics;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import com.google.solutions.df.video.analytics.common.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.schemas.transforms.Group;
+import org.apache.beam.sdk.transforms.Count;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -70,19 +74,35 @@ public class VideoAnalyticsPipeline {
             .setRowSchema(Util.videoMlCustomOutputListSchema);
 
     // Filter annotations by relevant entities and confidence, then write to Pub/Sub output topic
-    annotationResult
-        .apply(
-            "FilterRelevantAnnotations",
-            FilterRelevantAnnotationsTransform.newBuilder()
-                .setEntityList(options.getEntities())
-                .setConfidenceThreshold(options.getConfidenceThreshold())
-                .build())
-        .setRowSchema(Util.videoMlCustomOutputListSchema)
-        .apply(
-            "WriteRelevantAnnotationsToPubSub",
-            WriteRelevantAnnotationsToPubSubTransform.newBuilder()
-                .setTopicId(options.getOutputTopic())
-                .build());
+    PCollection<Row> filterAnnotationResposne =
+        annotationResult
+            .apply(
+                "FilterRelevantAnnotations",
+                FilterRelevantAnnotationsTransform.newBuilder()
+                    .setEntityList(options.getEntities())
+                    .setConfidenceThreshold(options.getConfidenceThreshold())
+                    .build())
+            .setRowSchema(Util.videoMlCustomOutputListSchema);
+    PCollection<Row> metadataRow =
+        filterAnnotationResposne
+            .apply(
+                "MetadataConstructs",
+                Group.<Row>byFieldNames("file_name")
+                    .aggregateField("entity", Count.combineFn(), "num_of_entities"))
+            .apply("MapMetadataRow", MapElements.via(new MapMetadataRow()))
+            .setRowSchema(Util.metadataSchema);
+    filterAnnotationResposne.apply(
+        "WriteRelevantAnnotationsToPubSub",
+        WriteRelevantAnnotationsToPubSubTransform.newBuilder()
+            .setTopicId(options.getOutputTopic())
+            .setAttributes(ImmutableMap.of("type", "data"))
+            .build());
+    metadataRow.apply(
+        "WriteMetadataInfoToPubSub",
+        WriteRelevantAnnotationsToPubSubTransform.newBuilder()
+            .setTopicId(options.getOutputTopic())
+            .setAttributes(ImmutableMap.of("type", "metadata"))
+            .build());
 
     // Stream insert all annotations to BigQuery
     annotationResult.apply(
