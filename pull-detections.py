@@ -30,7 +30,7 @@ def callback(message):
         print ("""------[ Entity detected ]-------
 Entity: {}
 File: {}
-""".format(data['entity'], data['gcsUri']))
+""".format(data['entity'], data['file_name']))
     except KeyError:
         print ("------[ Error ]-------\n{}\n".format(message.data))
     else:
