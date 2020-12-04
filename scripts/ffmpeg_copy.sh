@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 ## sh ffmpeg_copy.sh gs://dataflow-video-analytics-test-clips/gbikes_dinosaur.mp4 gs://<bucket>/
+
+set -eu -o pipefail
+shopt -s failglob
+
 rm -r *.mp4
 gsutil -m cp $1 . 
 for file in *.mp4
