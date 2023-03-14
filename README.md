@@ -56,8 +56,8 @@ export GCS_NOTIFICATION_TOPIC="gcs-notification-topic"
 export GCS_NOTIFICATION_SUBSCRIPTION="gcs-notification-subscription"
 export OBJECT_DETECTION_TOPIC="object-detection-topic"
 export OBJECT_DETECTION_SUBSCRIPTION="object-detection-subscription"
-export OBJECT_DETECTION_TOPIC="object-detection-error-topic"
-export OBJECT_DETECTION_SUBSCRIPTION="object-detection-error-subscription"
+export ERROR_TOPIC="object-detection-error-topic"
+export ERROR_SUBSCRIPTION="object-detection-error-subscription"
 gcloud pubsub topics create ${GCS_NOTIFICATION_TOPIC}
 gcloud pubsub subscriptions create ${GCS_NOTIFICATION_SUBSCRIPTION} --topic=${GCS_NOTIFICATION_TOPIC}
 gcloud pubsub topics create ${OBJECT_DETECTION_TOPIC}
