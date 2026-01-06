@@ -45,8 +45,8 @@ export REGION=[REGION]
 ```
 export VIDEO_CLIPS_BUCKET=${PROJECT}_videos
 export DATAFLOW_TEMPLATE_BUCKET=${PROJECT}_dataflow_template_config
-gsutil mb -c standard -l ${REGION} gs://${VIDEO_CLIPS_BUCKET}
-gsutil mb -c standard -l ${REGION} gs://${DATAFLOW_TEMPLATE_BUCKET}
+gcloud storage buckets create gs://${VIDEO_CLIPS_BUCKET} --default-storage-class=standard --location=${REGION}
+gcloud storage buckets create gs://${DATAFLOW_TEMPLATE_BUCKET} --default-storage-class=standard --location=${REGION}
 ```
 
 4. Create required topics and subscriptions as below
@@ -113,7 +113,7 @@ gradle jib -Djib.to.image=gcr.io/${PROJECT}/dataflow-video-analytics:latest
 9. Upload the template JSON config file to GCS.
 
 ```
-cat << EOF | gsutil cp - gs://${DATAFLOW_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json
+cat << EOF | gcloud storage cp - gs://${DATAFLOW_TEMPLATE_BUCKET}/dynamic_template_video_analytics.json
 {
   "image": "gcr.io/${PROJECT}/dataflow-video-analytics:latest",
   "sdk_info": {"language": "JAVA"}
@@ -146,13 +146,13 @@ EOF
 2. Enable GCS metadata notification for the PubSub and copy sample data to your bucket. 
 
 ```
-gsutil notification create -t ${GCS_NOTIFICATION_TOPIC} -f json gs://${VIDEO_CLIPS_BUCKET}
+gcloud storage buckets notifications create gs://${VIDEO_CLIPS_BUCKET} --topic=${GCS_NOTIFICATION_TOPIC} --payload-format=json
 ```
 
 3. Copy test files to the bucket:
 
 ```
-gsutil -m cp "gs://df-video-analytics-drone-dataset/*" gs://${VIDEO_CLIPS_BUCKET}
+gcloud storage cp "gs://df-video-analytics-drone-dataset/*" gs://${VIDEO_CLIPS_BUCKET}
 ```
 
 4. Please validate if pipeline has successfully processed the data by looking the elements count in the write transform. 
@@ -245,5 +245,4 @@ gcloud pubsub subscriptions pull ${OBJECT_DETECTION_SUBSCRIPTION} --auto-ack --l
    ]
 }
 ```
-
 
